@@ -6,7 +6,7 @@ from tkinter import filedialog, Tk, Button, Label
 
 import pandas as pd
 
-from frame.read_excel import ReadExcel
+from frame.read_excel import ExcelUtils
 
 
 class App:
@@ -85,8 +85,8 @@ class App:
 
     def __submit(self):
         try:
-            valid_brands = ReadExcel(self.valid_brands_file_name).open_file("ReferenceData")['brand']
-            df = ReadExcel(self.data_file_name).open_file()
+            valid_brands = ExcelUtils(self.valid_brands_file_name).get_file_as_data_frame("ReferenceData")['brand']
+            df = ExcelUtils(self.data_file_name).get_file_as_data_frame()
             df.fillna('')
 
             results = []
