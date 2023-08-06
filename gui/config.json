@@ -1,0 +1,9 @@
+{
+  "valuesForAllColumns": {
+    "category": "All Products"
+  },
+  "valuesForMiraklColumns": {
+    "product_id_type": "SHOP_SKU",
+    "quantity": "50000"
+  }
+}
