@@ -1,12 +1,16 @@
 import pandas as pd
 
 
-class ReadExcel:
-    def __init__(self, path):
-        self.path = path
+class ExcelUtils:
+    __EXCEL_FILE_EXTENSION = 'xlsx'
 
-    def open_file(self, sheet_name=None):
+    @staticmethod
+    def get_file_as_data_frame(path, sheet_name=None):
         if sheet_name is None:
-            return pd.read_excel(self.path)
+            return pd.read_excel(path)
         else:
-            return pd.read_excel(self.path, sheet_name=sheet_name)
+            return pd.read_excel(path, sheet_name=sheet_name)
+
+    @staticmethod
+    def save_data_data_frame_as_excel_file_to_path(data_frame, path_to_save):
+        data_frame.to_excel(f'{path_to_save}.xlsx', index=False)
