@@ -132,14 +132,15 @@ class DataMigrationApp:
                     offer_df[SKU_COLUMN_KEY].to_numpy()))
             # read Excel file with template
             template_df = get_file_as_data_frame(self.__template_file_name)
-            # save original headers from template file
-            original_headers = template_df.columns
-            template_df.columns = template_df.iloc[0]
-            template_df = template_df.drop(template_df.index[0])
-            # save secondary headers in right orders
-            columns_with_valid_order = template_df.columns.to_numpy()
+            valid_brands = self.__reference_data_data_frame[BRAND_COLUMN_KEY]
             # merge product data table to with template
-            data = pd.merge(template_df, product_df, how='outer', on=list(product_df.columns))
+            data = pd.merge(template_df, product_df, how='right', on=list(product_df.columns))
+            # save original headers
+            original_headers = data.columns
+            data.columns = data.iloc[0]
+            data = data.drop(data.index[0])
+            # save secondary headers in right orders
+            columns_with_valid_order = data.columns.to_numpy()
             # merge result table from previous merge with mirakl data table
             data = pd.merge(data, offer_df, how='left', left_on='shop_sku', right_on=SKU_COLUMN_KEY,
                             suffixes=(LEFT_SUFFIX, RIGHT_SUFFIX))
@@ -170,7 +171,6 @@ class DataMigrationApp:
                                         self.__state_dropdown_var.get())
             data['quantity'] = numpy.where(data[SKU_COLUMN_KEY] == EMPTY_STRING, EMPTY_STRING, QUANTITY)
             # set valid brand values
-            valid_brands = self.__reference_data_data_frame[BRAND_COLUMN_KEY]
             results_brand = []
             for index, brand in enumerate(data[BRAND_COLUMN_KEY].to_numpy()):
                 brand_string = str(brand)
@@ -213,7 +213,7 @@ class DataMigrationApp:
         self.__mirakl_data_file_name = self.__open_excel_file_via_dialog()
         self.__last_opened_directory = self.__mirakl_data_file_name
         self.__select_mirakl_product_data_file_label.configure(
-            text=f"Selected Mirakl Data File: {self.__get_file_name_from_path(self.__mirakl_data_file_name)}")
+            text=f"Selected Mirakl Data File: {self.__get_file_name_from_path(self.__product_data_file_name)}")
 
     def __select_save_directory(self):
         self.__save_directory = filedialog.askdirectory()
