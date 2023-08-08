@@ -1,5 +1,6 @@
 from threading import Thread
 from tkinter import filedialog, Tk, Button, Label, StringVar, OptionMenu
+from pathlib import Path
 import os
 
 import numpy
@@ -16,7 +17,7 @@ LABEL_HEIGHT = 2
 LABEL_WIDTH = 80
 SUBMIT_HEIGHT = 2
 SUBMIT_WIDTH = 10
-WRAPLENGHT = 600
+WRAP_LENGTH = 600
 
 DISABLED_STATE = 'disabled'
 START_MESSAGE_FOR_DROPDOWN_LABEL = 'Please, load the file with blank template'
@@ -36,7 +37,8 @@ class DataMigrationApp:
         self.__window = Tk()
         self.__select_template_file_label = self.__create_label_element('Select Excel file with blank template:')
         self.__select_product_data_file_label = self.__create_label_element('Select Excel file with product data:')
-        self.__select_mirakl_product_data_file_label = self.__create_label_element('Select Excel file with Mirakl data:')
+        self.__select_mirakl_product_data_file_label = self.__create_label_element(
+            'Select Excel file with Mirakl data:')
         self.__browse_save_directory_label = self.__create_label_element('Select a folder to save the file:')
         self.__select_category_label = self.__create_label_element(START_MESSAGE_FOR_DROPDOWN_LABEL)
         self.__select_state_label = self.__create_label_element(START_MESSAGE_FOR_DROPDOWN_LABEL)
@@ -47,7 +49,7 @@ class DataMigrationApp:
         self.__select_product_data_file_button = Button(self.__window,
                                                         text=BUTTON_TEXT,
                                                         command=self.__select_product_data_file)
-        
+
         self.__select_template_file_button = Button(self.__window,
                                                     text=BUTTON_TEXT,
                                                     command=self.__select_template_file)
@@ -55,18 +57,18 @@ class DataMigrationApp:
         self.__select_mirakl_product_data_file_button = Button(self.__window,
                                                                text=BUTTON_TEXT,
                                                                command=self.__select_mirakl_data_file)
-        
+
         self.__browse_save_directory_button = Button(self.__window,
                                                      text="Select Directory",
                                                      command=self.__select_save_directory)
-        
+
         self.__submit_button = Button(self.__window,
                                       text="Submit",
                                       width=SUBMIT_WIDTH, height=SUBMIT_HEIGHT,
                                       command=self.__wrap_submit_command_into_thread)
-        
+
         self.__open_file_folder_button = Button(self.__window,
-                                      text="Open file folder")
+                                                text="Open file folder")
 
         self.__product_id_dropdown_var = StringVar()
         self.__product_id_type_dropdown = OptionMenu(self.__window, self.__product_id_dropdown_var, EMPTY_STRING)
@@ -153,16 +155,16 @@ class DataMigrationApp:
             data['product-id'] = data[SKU_COLUMN_KEY]
             # add sku postfix to 'sku' column values
             data[SKU_COLUMN_KEY] = pd.Series(
-                map(lambda sku: f'{str(sku)}{SKU_POSTFIX}' if str(sku) is not EMPTY_STRING else EMPTY_STRING,
+                map(lambda sku: EMPTY_STRING if not str(sku) else f'{str(sku)}{SKU_POSTFIX}',
                     data[SKU_COLUMN_KEY].to_numpy()))
             # set entire column with certain value
-            if(self.__product_id_dropdown_var.get() == EMPTY_STRING):
+            if not self.__product_id_dropdown_var.get():
                 raise Exception("Product id hasn't been specified")
-            elif(self.__category_dropdown_var.get() == EMPTY_STRING):
+            elif not self.__category_dropdown_var.get():
                 raise Exception("Category hasn't been specified")
-            elif(self.__state_dropdown_var.get() == EMPTY_STRING):
+            elif not self.__state_dropdown_var.get():
                 raise Exception("State hasn't been specified")
-            data = data.assign(**{'category': self.__category_dropdown_var.get()})            
+            data = data.assign(**{'category': self.__category_dropdown_var.get()})
             data['product-id-type'] = numpy.where(data[SKU_COLUMN_KEY] == EMPTY_STRING, EMPTY_STRING,
                                                   self.__product_id_dropdown_var.get())
             data['state'] = numpy.where(data[SKU_COLUMN_KEY] == EMPTY_STRING, EMPTY_STRING,
@@ -186,11 +188,10 @@ class DataMigrationApp:
             path = f"{self.__save_directory}/{current_time}"
             save_data_data_frame_as_excel_file_to_path(data, path)
             self.__status_label.info(f"Done. The file has been saved to {path}")
-
             # add open file folder button
             self.__open_file_folder_button.grid(column=1, row=19)
             self.__open_file_folder_button.configure(command=self.__open_file_folder)
-            
+
         except Exception as e:
             self.__status_label.error(f"ERROR. SOMETHING WENT WRONG {str(e)}")
 
@@ -198,7 +199,7 @@ class DataMigrationApp:
         self.__template_file_name = self.__open_excel_file_via_dialog()
         self.__last_opened_directory = self.__template_file_name
         self.__select_template_file_label.configure(
-            text="Selected File blank template: " + f"\"{self.__template_file_name.split('/')[-1]}\"")
+            text=f"Selected File blank template: {self.__get_file_name_from_path(self.__template_file_name)}")
 
         self.__set_dropdown_with_values_from_reference_data()
 
@@ -206,13 +207,13 @@ class DataMigrationApp:
         self.__product_data_file_name = self.__open_excel_file_via_dialog()
         self.__last_opened_directory = self.__product_data_file_name
         self.__select_product_data_file_label.configure(
-            text="Selected Product Data File: " + f"\"{self.__product_data_file_name.split('/')[-1]}\"")
+            text=f"Selected Product Data File: {self.__get_file_name_from_path(self.__product_data_file_name)}")
 
     def __select_mirakl_data_file(self):
         self.__mirakl_data_file_name = self.__open_excel_file_via_dialog()
         self.__last_opened_directory = self.__mirakl_data_file_name
         self.__select_mirakl_product_data_file_label.configure(
-            text="Selected Mirakl Data File: " + f"\"{self.__mirakl_data_file_name.split('/')[-1]}\"")
+            text=f"Selected Mirakl Data File: {self.__get_file_name_from_path(self.__product_data_file_name)}")
 
     def __select_save_directory(self):
         self.__save_directory = filedialog.askdirectory()
@@ -248,8 +249,8 @@ class DataMigrationApp:
                      text=text,
                      width=LABEL_WIDTH, height=LABEL_HEIGHT,
                      fg=BLUE_COLOR, background=WHITE_COLOR,
-                     wraplength=WRAPLENGHT)
-    
+                     wraplength=WRAP_LENGTH)
+
     def __open_excel_file_via_dialog(self):
         return filedialog.askopenfilename(initialdir=self.__last_opened_directory,
                                           title="Select a File",
@@ -264,3 +265,7 @@ class DataMigrationApp:
         menu.delete(0, 'end')
         for option in options:
             menu.add_command(label=option, command=lambda o=option: dropdown_var.set(o))
+
+    @staticmethod
+    def __get_file_name_from_path(path):
+        return Path(path).name
