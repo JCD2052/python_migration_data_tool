@@ -1,5 +1,6 @@
 from threading import Thread
 from tkinter import filedialog, Tk, Button, Label, StringVar, OptionMenu
+import os
 
 import numpy
 
@@ -13,6 +14,8 @@ WINDOW_GEOMETRY = '600x600'
 BUTTON_TEXT = 'Select File'
 LABEL_HEIGHT = 2
 LABEL_WIDTH = 80
+SUBMIT_HEIGHT = 2
+SUBMIT_WIDTH = 10
 
 DISABLED_STATE_FOR_DROPDOWN_ELEMENT = 'disabled'
 START_MESSAGE_FOR_DROPDOWN_LABEL = 'Please, load the file with blank template'
@@ -32,17 +35,18 @@ class DataMigrationApp:
         self.__window = Tk()
         self.__select_template_file_label = self.__create_label_element('Select Excel file with blank template:')
         self.__select_product_data_file_label = self.__create_label_element('Select Excel file with product data:')
-        self.__select_mirakl_product_data_file_label = self.__create_label_element(
-            'Select Excel file with Mirakl data:')
+        self.__select_mirakl_product_data_file_label = self.__create_label_element('Select Excel file with Mirakl data:')
         self.__browse_save_directory_label = self.__create_label_element('Select a folder to save the file:')
         self.__select_category_label = self.__create_label_element(START_MESSAGE_FOR_DROPDOWN_LABEL)
         self.__select_state_label = self.__create_label_element(START_MESSAGE_FOR_DROPDOWN_LABEL)
         self.__select_product_id_type_label = self.__create_label_element(START_MESSAGE_FOR_DROPDOWN_LABEL)
+        self.__blank_line_label = self.__create_label_element(EMPTY_STRING)
         self.__status_label = LabelLogger(self.__create_label_element(EMPTY_STRING))
 
         self.__select_product_data_file_button = Button(self.__window,
                                                         text=BUTTON_TEXT,
                                                         command=self.__select_product_data_file)
+        
         self.__select_template_file_button = Button(self.__window,
                                                     text=BUTTON_TEXT,
                                                     command=self.__select_template_file)
@@ -50,12 +54,18 @@ class DataMigrationApp:
         self.__select_mirakl_product_data_file_button = Button(self.__window,
                                                                text=BUTTON_TEXT,
                                                                command=self.__select_mirakl_data_file)
+        
         self.__browse_save_directory_button = Button(self.__window,
                                                      text="Select Directory",
                                                      command=self.__select_save_directory)
+        
         self.__submit_button = Button(self.__window,
                                       text="Submit",
+                                      width=SUBMIT_WIDTH, height=SUBMIT_HEIGHT,
                                       command=self.__wrap_submit_command_into_thread)
+        
+        self.__open_file_folder_button = Button(self.__window,
+                                      text="Open file folder")
 
         self.__product_id_dropdown_var = StringVar()
         self.__product_id_type_dropdown = OptionMenu(self.__window, self.__product_id_dropdown_var, EMPTY_STRING)
@@ -94,6 +104,7 @@ class DataMigrationApp:
         self.__select_state_label.grid(column=1, row=13)
         self.__state_dropdown.grid(column=1, row=14)
         self.__state_dropdown.configure(state=DISABLED_STATE_FOR_DROPDOWN_ELEMENT)
+        self.__blank_line_label.grid(column=1, row=15)
         self.__submit_button.grid(column=1, row=17)
         self.__status_label.element.grid(column=1, row=18)
 
@@ -167,25 +178,30 @@ class DataMigrationApp:
             path = f"{self.__save_directory}/{current_time}"
             save_data_data_frame_as_excel_file_to_path(data, path)
             self.__status_label.info(f"Done. The file has been saved to {path}")
+
+            # add open file folder button
+            self.__open_file_folder_button.grid(column=1, row=19)
+            self.__open_file_folder_button.configure(command=self.__open_file_folder)
+            
         except Exception as e:
             self.__status_label.error(f"ERROR. SOMETHING WENT WRONG {str(e)}")
 
     def __select_template_file(self):
         self.__template_file_name = self.__open_excel_file_via_dialog()
         self.__select_template_file_label.configure(
-            text="Selected File blank template: " + self.__template_file_name)
+            text="Selected File blank template: " + f"\"{self.__template_file_name.split('/')[-1]}\"")
 
-        self.set_dropdown_with_values_from_reference_data()
+        self.__set_dropdown_with_values_from_reference_data()
 
     def __select_product_data_file(self):
         self.__product_data_file_name = self.__open_excel_file_via_dialog()
         self.__select_product_data_file_label.configure(
-            text="Selected Product Data File: " + self.__product_data_file_name)
+            text="Selected Product Data File: " + f"\"{self.__product_data_file_name.split('/')[-1]}\"")
 
     def __select_mirakl_data_file(self):
         self.__mirakl_data_file_name = self.__open_excel_file_via_dialog()
         self.__select_mirakl_product_data_file_label.configure(
-            text="Selected Mirakl Data File: " + self.__mirakl_data_file_name)
+            text="Selected Mirakl Data File: " + f"\"{self.__mirakl_data_file_name.split('/')[-1]}\"")
 
     def __select_save_directory(self):
         self.__save_directory = filedialog.askdirectory()
@@ -196,7 +212,10 @@ class DataMigrationApp:
         self.__reference_data_data_frame = get_file_as_data_frame(self.__template_file_name, 'ReferenceData')
         self.__reference_data_data_frame = self.__reference_data_data_frame.fillna(EMPTY_STRING)
 
-    def set_dropdown_with_values_from_reference_data(self):
+    def __open_file_folder(self):
+        return os.startfile(self.__save_directory)
+
+    def __set_dropdown_with_values_from_reference_data(self):
         self.__set_reference_data_data_frame()
 
         categories = self.__reference_data_data_frame['category']
@@ -217,7 +236,7 @@ class DataMigrationApp:
                      text=text,
                      width=LABEL_WIDTH, height=LABEL_HEIGHT,
                      fg=BLUE_COLOR, background=WHITE_COLOR)
-
+    
     @staticmethod
     def __open_excel_file_via_dialog():
         return filedialog.askopenfilename(initialdir="/",
