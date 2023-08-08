@@ -81,6 +81,7 @@ class DataMigrationApp:
         self.__save_directory = EMPTY_STRING
 
         self.__reference_data_data_frame = None
+        self.__last_opened_directory = "/"
 
     def run(self):
         self.__configure_app()
@@ -195,6 +196,7 @@ class DataMigrationApp:
 
     def __select_template_file(self):
         self.__template_file_name = self.__open_excel_file_via_dialog()
+        self.__last_opened_directory = self.__template_file_name
         self.__select_template_file_label.configure(
             text="Selected File blank template: " + f"\"{self.__template_file_name.split('/')[-1]}\"")
 
@@ -202,16 +204,19 @@ class DataMigrationApp:
 
     def __select_product_data_file(self):
         self.__product_data_file_name = self.__open_excel_file_via_dialog()
+        self.__last_opened_directory = self.__product_data_file_name
         self.__select_product_data_file_label.configure(
             text="Selected Product Data File: " + f"\"{self.__product_data_file_name.split('/')[-1]}\"")
 
     def __select_mirakl_data_file(self):
         self.__mirakl_data_file_name = self.__open_excel_file_via_dialog()
+        self.__last_opened_directory = self.__mirakl_data_file_name
         self.__select_mirakl_product_data_file_label.configure(
             text="Selected Mirakl Data File: " + f"\"{self.__mirakl_data_file_name.split('/')[-1]}\"")
 
     def __select_save_directory(self):
         self.__save_directory = filedialog.askdirectory()
+        self.__last_opened_directory = self.__save_directory
         self.__browse_save_directory_label.configure(
             text="Selected Directory to save an output file: " + self.__save_directory)
 
@@ -245,9 +250,8 @@ class DataMigrationApp:
                      fg=BLUE_COLOR, background=WHITE_COLOR,
                      wraplength=WRAPLENGHT)
     
-    @staticmethod
-    def __open_excel_file_via_dialog():
-        return filedialog.askopenfilename(initialdir="/",
+    def __open_excel_file_via_dialog(self):
+        return filedialog.askopenfilename(initialdir=self.__last_opened_directory,
                                           title="Select a File",
                                           filetypes=(("Excel files",
                                                       "*.xls*"),))
