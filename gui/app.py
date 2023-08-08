@@ -16,8 +16,9 @@ LABEL_HEIGHT = 2
 LABEL_WIDTH = 80
 SUBMIT_HEIGHT = 2
 SUBMIT_WIDTH = 10
+WRAPLENGHT = 600
 
-DISABLED_STATE_FOR_DROPDOWN_ELEMENT = 'disabled'
+DISABLED_STATE = 'disabled'
 START_MESSAGE_FOR_DROPDOWN_LABEL = 'Please, load the file with blank template'
 
 BRAND_COLUMN_KEY = 'brand'
@@ -97,13 +98,13 @@ class DataMigrationApp:
         self.__browse_save_directory_button.grid(column=1, row=8)
         self.__select_product_id_type_label.grid(column=1, row=9)
         self.__product_id_type_dropdown.grid(column=1, row=10)
-        self.__product_id_type_dropdown.configure(state=DISABLED_STATE_FOR_DROPDOWN_ELEMENT)
+        self.__product_id_type_dropdown.configure(state=DISABLED_STATE)
         self.__select_category_label.grid(column=1, row=11)
         self.__category_dropdown.grid(column=1, row=12)
-        self.__category_dropdown.configure(state=DISABLED_STATE_FOR_DROPDOWN_ELEMENT)
+        self.__category_dropdown.configure(state=DISABLED_STATE)
         self.__select_state_label.grid(column=1, row=13)
         self.__state_dropdown.grid(column=1, row=14)
-        self.__state_dropdown.configure(state=DISABLED_STATE_FOR_DROPDOWN_ELEMENT)
+        self.__state_dropdown.configure(state=DISABLED_STATE)
         self.__blank_line_label.grid(column=1, row=15)
         self.__submit_button.grid(column=1, row=17)
         self.__status_label.element.grid(column=1, row=18)
@@ -154,7 +155,13 @@ class DataMigrationApp:
                 map(lambda sku: f'{str(sku)}{SKU_POSTFIX}' if str(sku) is not EMPTY_STRING else EMPTY_STRING,
                     data[SKU_COLUMN_KEY].to_numpy()))
             # set entire column with certain value
-            data = data.assign(**{'category': self.__category_dropdown_var.get()})
+            if(self.__product_id_dropdown_var.get() == EMPTY_STRING):
+                raise Exception("Product id hasn't been specified")
+            elif(self.__category_dropdown_var.get() == EMPTY_STRING):
+                raise Exception("Category hasn't been specified")
+            elif(self.__state_dropdown_var.get() == EMPTY_STRING):
+                raise Exception("State hasn't been specified")
+            data = data.assign(**{'category': self.__category_dropdown_var.get()})            
             data['product-id-type'] = numpy.where(data[SKU_COLUMN_KEY] == EMPTY_STRING, EMPTY_STRING,
                                                   self.__product_id_dropdown_var.get())
             data['state'] = numpy.where(data[SKU_COLUMN_KEY] == EMPTY_STRING, EMPTY_STRING,
@@ -235,7 +242,8 @@ class DataMigrationApp:
         return Label(self.__window,
                      text=text,
                      width=LABEL_WIDTH, height=LABEL_HEIGHT,
-                     fg=BLUE_COLOR, background=WHITE_COLOR)
+                     fg=BLUE_COLOR, background=WHITE_COLOR,
+                     wraplength=WRAPLENGHT)
     
     @staticmethod
     def __open_excel_file_via_dialog():
