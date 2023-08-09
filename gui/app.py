@@ -213,7 +213,7 @@ class DataMigrationApp:
         self.__mirakl_data_file_name = self.__open_excel_file_via_dialog()
         self.__last_opened_directory = self.__mirakl_data_file_name
         self.__select_mirakl_product_data_file_label.configure(
-            text=f"Selected Mirakl Data File: {self.__get_file_name_from_path(self.__product_data_file_name)}")
+            text=f"Selected Mirakl Data File: {self.__get_file_name_from_path(self.__mirakl_data_file_name)}")
 
     def __select_save_directory(self):
         self.__save_directory = filedialog.askdirectory()
