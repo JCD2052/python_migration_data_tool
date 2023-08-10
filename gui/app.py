@@ -12,7 +12,7 @@ from utils.string_utils import *
 from utils.color_constants import *
 
 APP_TITLE = 'Data Migration Tool'
-WINDOW_GEOMETRY = '600x600'
+WINDOW_GEOMETRY = '600x700'
 BUTTON_TEXT = 'Select File'
 LABEL_HEIGHT = 2
 LABEL_WIDTH = 80
@@ -65,7 +65,6 @@ class DataMigrationApp:
         self.__category_dropdown_var = StringVar()
         self.__select_category_label = self.__create_label_element(START_MESSAGE_FOR_DROPDOWN_LABEL)
         self.__category_dropdown = OptionMenu(self.__window, self.__category_dropdown_var, EMPTY_STRING)
-        self.__status_label = LabelLogger(self.__create_label_element(EMPTY_STRING))
 
         self.__submit_button = Button(self.__window,
                                       text="Submit",
@@ -73,6 +72,7 @@ class DataMigrationApp:
                                       command=self.__wrap_submit_command_into_thread)
 
         self.__open_file_folder_button = None
+        self.__status_label = LabelLogger(self.__create_label_element(EMPTY_STRING))
 
         self.__template_file_name = EMPTY_STRING
         self.__product_data_file_name = EMPTY_STRING
@@ -93,8 +93,8 @@ class DataMigrationApp:
         for index, widget in enumerate(widgets):
             self.__getattribute__(widget).grid(column=DEFAULT_COLUMN, row=index)
             self.__window.rowconfigure(index, minsize=40)
-        self.__last_position_in_grid = len(widgets)
-
+        self.__status_label.element.grid(column=DEFAULT_COLUMN, row=self.__get_rows_size() + 1)
+        self.__last_position_in_grid = self.__get_rows_size()
         dropdowns = {k: v for k, v in self.__dict__.items() if isinstance(type(v), tkinter.Menubutton)}.keys()
         for dropdown in dropdowns:
             self.__getattribute__(dropdown).configure(state=DISABLED_STATE)
@@ -109,14 +109,18 @@ class DataMigrationApp:
 
     def __submit(self):
         try:
+            self.__status_label.info("Reading template file...")
             template_df = get_file_as_data_frame(self.__template_file_name)
+            original_headers = template_df.columns
+            template_df = self.__drop_headers_from_data_frame(template_df)
+            columns_with_valid_order = template_df.columns.to_numpy()
+            self.__status_label.info("Reading product data file...")
             product_df = get_file_as_data_frame(self.__product_data_file_name)
-            if list(product_df.columns) in list(template_df.columns):
+            if len(set(product_df.columns).intersection(set(columns_with_valid_order))) is 0:
                 product_df = self.__drop_headers_from_data_frame(product_df)
+            self.__status_label.info("Reading offer file...")
             offer_df = self.__get__normalized_offer_data()
             data = pd.merge(template_df, product_df, how='right', on=list(product_df.columns))
-            original_headers = data.columns
-            data = self.__drop_headers_from_data_frame(data)
             data = self.merge_with_offer_data_and_normalize(data, offer_df)
             if not self.__product_id_dropdown_var.get():
                 raise Exception("Product id hasn't been specified")
@@ -124,6 +128,7 @@ class DataMigrationApp:
                 raise Exception("Category hasn't been specified")
             elif not self.__state_dropdown_var.get():
                 raise Exception("State hasn't been specified")
+            data = data[columns_with_valid_order]
             data = self.set_dropdown_values(data)
             data = self.insert_secondary_headers_as_row(data)
             data.columns = original_headers
@@ -145,12 +150,12 @@ class DataMigrationApp:
     def __save_data_to_excel(self, data):
         current_time = get_current_time_as_string()
         path = f"{self.__save_directory}/{current_time}"
+        self.__status_label.info(f'Saving file to {path}...')
         save_data_data_frame_as_excel_file_to_path(data, path)
         self.__status_label.info(f"Done. The file has been saved to {path}")
 
     def __get__normalized_offer_data(self):
         offer_df = get_file_as_data_frame(self.__mirakl_data_file_name)
-        # remove mirakl postfix from sku column values
         duplicates = offer_df[offer_df[SKU_COLUMN_KEY].str.contains(SKU_POSTFIX) == False].reset_index(drop=True)
         offer_df = offer_df[offer_df[SKU_COLUMN_KEY].str.contains(SKU_POSTFIX) == True].reset_index(drop=True)
         offer_df[SKU_COLUMN_KEY] = pd.Series(
@@ -192,7 +197,7 @@ class DataMigrationApp:
     def __show_open_file_folder_button(self):
         self.__open_file_folder_button = Button(self.__window,
                                                 text="Open file folder")
-        self.__open_file_folder_button.grid(column=1, row=19)
+        self.__open_file_folder_button.grid(column=DEFAULT_COLUMN, row=self.__last_position_in_grid)
         self.__open_file_folder_button.configure(command=self.__open_file_folder)
 
     def __open_file_folder(self):
@@ -227,20 +232,18 @@ class DataMigrationApp:
                                           filetypes=(("Excel files",
                                                       "*.xls*"),))
 
+    def __get_rows_size(self):
+        return self.__window.grid_size()[1]
+
     @staticmethod
     def merge_with_offer_data_and_normalize(data, offer_data):
-        columns_with_valid_order = data.columns.to_numpy()
         data = pd.merge(data, offer_data, how='left', left_on='shop_sku', right_on=SKU_COLUMN_KEY,
                         suffixes=(LEFT_SUFFIX, RIGHT_SUFFIX))
         data = data.fillna(EMPTY_STRING)
-        # remove created columns after merge
         cols = list(filter(lambda column: LEFT_SUFFIX not in str(column), data.columns))
         data = data[cols]
         data.columns = data.columns.str.replace(RIGHT_SUFFIX, EMPTY_STRING)
-        data = data[columns_with_valid_order]
-        # set entire 'product-id' column with values from 'sku' column
         data['product-id'] = data[SKU_COLUMN_KEY]
-        # add sku postfix to 'sku' column values
         data[SKU_COLUMN_KEY] = pd.Series(
             map(lambda sku: EMPTY_STRING if not str(sku) else f'{str(sku)}{SKU_POSTFIX}',
                 data[SKU_COLUMN_KEY].to_numpy()))
@@ -248,8 +251,8 @@ class DataMigrationApp:
 
     @staticmethod
     def insert_secondary_headers_as_row(data):
-        data.loc[-1] = data.columns  # adding a row
-        data.index = data.index + 1  # shifting index
+        data.loc[-1] = data.columns
+        data.index = data.index + 1
         return data.sort_index()
 
     @staticmethod
