@@ -161,8 +161,8 @@ class DataMigrationApp:
         offer_df[SKU_COLUMN_KEY] = pd.Series(
             map(lambda sku: str(sku).replace(MIRAKL_PRODUCT_POSTFIX, EMPTY_STRING).replace(SKU_POSTFIX, EMPTY_STRING),
                 offer_df[SKU_COLUMN_KEY].to_numpy()))
-        offer_df = pd.merge(offer_df, duplicates, how='outer', on=list(offer_df.columns))
-        return offer_df
+        duplicates = pd.merge(offer_df, duplicates, how='inner', on=list(offer_df.columns))
+        return offer_df.drop(duplicates.index)
 
     def __select_template_file(self):
         self.__template_file_name = self.__open_excel_file_via_dialog()
