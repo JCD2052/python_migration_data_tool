@@ -1,6 +1,6 @@
 import tkinter
 from threading import Thread
-from tkinter import filedialog, Tk, Button, Label, StringVar, OptionMenu
+from tkinter import filedialog, Tk, Button, Label, StringVar, OptionMenu, Checkbutton, BooleanVar
 from pathlib import Path
 import os
 
@@ -23,6 +23,7 @@ ROW_STEP = 3
 DEFAULT_COLUMN = 1
 
 DISABLED_STATE = 'disabled'
+NORMAL_STATE = 'normal'
 START_MESSAGE_FOR_DROPDOWN_LABEL = 'Please, load the file with blank template'
 
 BRAND_COLUMN_KEY = 'brand'
@@ -65,6 +66,10 @@ class DataMigrationApp:
         self.__category_dropdown_var = StringVar()
         self.__select_category_label = self.__create_label_element(START_MESSAGE_FOR_DROPDOWN_LABEL)
         self.__category_dropdown = OptionMenu(self.__window, self.__category_dropdown_var, EMPTY_STRING)
+        self.__use_product_data_category_checkbox_var = BooleanVar()
+        self.__use_product_data_category_checkbox = Checkbutton(self.__window, text="Use product data category",
+                                                                variable=self.__use_product_data_category_checkbox_var,
+                                                                command=self.__select_use_product_data)
 
         self.__submit_button = Button(self.__window,
                                       text="Submit",
@@ -124,7 +129,7 @@ class DataMigrationApp:
             data = self.merge_with_offer_data_and_normalize(data, offer_df)
             if not self.__product_id_dropdown_var.get():
                 raise Exception("Product id hasn't been specified")
-            elif not self.__category_dropdown_var.get():
+            elif ((not self.__category_dropdown_var.get()) & (not self.__use_product_data_category_checkbox_var.get())):
                 raise Exception("Category hasn't been specified")
             elif not self.__state_dropdown_var.get():
                 raise Exception("State hasn't been specified")
@@ -139,7 +144,8 @@ class DataMigrationApp:
                 f"ERROR. SOMETHING WENT WRONG: {type(e)} - {str(e.with_traceback(e.__traceback__))}")
 
     def set_dropdown_values(self, data):
-        data = data.assign(**{'category': self.__category_dropdown_var.get()})
+        if not self.__use_product_data_category_checkbox_var:
+            data = data.assign(**{'category': self.__category_dropdown_var.get()})
         data['product-id-type'] = numpy.where(data[SKU_COLUMN_KEY] == EMPTY_STRING, EMPTY_STRING,
                                               self.__product_id_dropdown_var.get())
         data['state'] = numpy.where(data[SKU_COLUMN_KEY] == EMPTY_STRING, EMPTY_STRING,
@@ -189,6 +195,12 @@ class DataMigrationApp:
         self.__last_opened_directory = self.__save_directory
         self.__browse_save_directory_label.configure(
             text="Selected Directory to save an output file: " + self.__save_directory)
+    
+    def __select_use_product_data(self):
+        if(self.__use_product_data_category_checkbox_var.get()):
+            self.__category_dropdown.configure(state=DISABLED_STATE)
+        else:
+            self.__category_dropdown.configure(state=NORMAL_STATE)
 
     def __set_reference_data_data_frame(self):
         self.__reference_data_data_frame = get_file_as_data_frame(self.__template_file_name, 'ReferenceData')
@@ -263,7 +275,7 @@ class DataMigrationApp:
     @staticmethod
     def __set_dropdown_with_options(dropdown_element, dropdown_var, options):
         options = filter(lambda cell: cell != EMPTY_STRING, options)
-        dropdown_element.configure(state='normal')
+        dropdown_element.configure(state=NORMAL_STATE)
         menu = dropdown_element['menu']
         menu.delete(0, 'end')
         for option in options:
