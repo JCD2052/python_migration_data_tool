@@ -144,7 +144,7 @@ class DataMigrationApp:
                 f"ERROR. SOMETHING WENT WRONG: {type(e)} - {str(e.with_traceback(e.__traceback__))}")
 
     def set_dropdown_values(self, data):
-        if not self.__use_product_data_category_checkbox_var:
+        if not self.__use_product_data_category_checkbox_var.get():
             data = data.assign(**{'category': self.__category_dropdown_var.get()})
         data['product-id-type'] = numpy.where(data[SKU_COLUMN_KEY] == EMPTY_STRING, EMPTY_STRING,
                                               self.__product_id_dropdown_var.get())
