@@ -129,7 +129,7 @@ class DataMigrationApp:
             data = self.merge_with_offer_data_and_normalize(data, offer_df)
             if not self.__product_id_dropdown_var.get():
                 raise Exception("Product id hasn't been specified")
-            elif ((not self.__category_dropdown_var.get()) & (not self.__use_product_data_category_checkbox_var.get())):
+            elif (not self.__category_dropdown_var.get()) & (not self.__use_product_data_category_checkbox_var.get()):
                 raise Exception("Category hasn't been specified")
             elif not self.__state_dropdown_var.get():
                 raise Exception("State hasn't been specified")
@@ -162,13 +162,14 @@ class DataMigrationApp:
 
     def __get__normalized_offer_data(self):
         offer_df = get_file_as_data_frame(self.__mirakl_data_file_name)
+        offer_df = offer_df.astype({SKU_COLUMN_KEY: 'string'})
         duplicates = offer_df[offer_df[SKU_COLUMN_KEY].str.contains(SKU_POSTFIX) == False].reset_index(drop=True)
         offer_df = offer_df[offer_df[SKU_COLUMN_KEY].str.contains(SKU_POSTFIX) == True].reset_index(drop=True)
         offer_df[SKU_COLUMN_KEY] = pd.Series(
             map(lambda sku: str(sku).replace(MIRAKL_PRODUCT_POSTFIX, EMPTY_STRING).replace(SKU_POSTFIX, EMPTY_STRING),
                 offer_df[SKU_COLUMN_KEY].to_numpy()))
         return pd.concat([offer_df, duplicates.loc[~duplicates[SKU_COLUMN_KEY].isin(offer_df[SKU_COLUMN_KEY])]
-                          .reset_index(drop=True)]).reset_index(drop=True)
+                         .reset_index(drop=True)]).reset_index(drop=True)
 
     def __select_template_file(self):
         self.__template_file_name = self.__open_excel_file_via_dialog()
@@ -195,9 +196,9 @@ class DataMigrationApp:
         self.__last_opened_directory = self.__save_directory
         self.__browse_save_directory_label.configure(
             text="Selected Directory to save an output file: " + self.__save_directory)
-    
+
     def __select_use_product_data(self):
-        if(self.__use_product_data_category_checkbox_var.get()):
+        if self.__use_product_data_category_checkbox_var.get():
             self.__category_dropdown.configure(state=DISABLED_STATE)
         else:
             self.__category_dropdown.configure(state=NORMAL_STATE)
