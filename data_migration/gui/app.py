@@ -6,7 +6,7 @@ import os
 
 import numpy
 
-from gui.label_logger import LabelLogger
+from utils.label_logger import LabelLogger
 from utils.excel_utils import *
 from utils.string_utils import *
 from utils.color_constants import *
