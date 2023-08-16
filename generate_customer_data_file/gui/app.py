@@ -1,3 +1,5 @@
+import traceback
+
 from data_migration.gui.app import LABEL_WIDTH, LABEL_HEIGHT, WRAP_LENGTH
 from utils.color_constants import BLUE_COLOR, WHITE_COLOR
 from utils.data_type_constant import *
@@ -51,16 +53,17 @@ class GenerateCustomerFileApp:
         self.__window.config(background=WHITE_COLOR)
 
     def __submit(self) -> None:
-        if self.__save_directory is None:
-            error_text = "Didn't select a save folder"
-            self.__status_label.erroe(error_text)
-            raise Exception(error_text)
-        data = self.__brand_content.get_values_from_input_widgets()
-        file_name = self.__brand_content.get_file_name()
-        path = f'{self.__save_directory}//{file_name}' + TXT_FILE_EXTENSION
-        with open(path, mode='w') as file:
-            file.write(data)
-        self.__status_label.info(f'Saved to {path}')
+        try:
+            if self.__save_directory is None:
+                raise Exception("Didn't select a save folder")
+            data = self.__brand_content.get_values_from_input_widgets()
+            file_name = self.__brand_content.get_file_name()
+            path = f'{self.__save_directory}//{file_name}' + TXT_FILE_EXTENSION
+            with open(path, mode='w') as file:
+                file.write(data)
+            self.__status_label.info(f'Saved to {path}')
+        except Exception:
+            self.__status_label.configure(f"ERROR. SOMETHING WENT WRONG: {traceback.format_exc()}")
 
     def __set_brand_content_on_selected_brand_name(self) -> None:
         self.__remove_primal_widgets()

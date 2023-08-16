@@ -1,5 +1,6 @@
 import os
 import tkinter
+import traceback
 from pathlib import Path
 from threading import Thread
 from tkinter import Tk, Button, Label, filedialog
@@ -143,9 +144,9 @@ class SkuComparativeApp:
             self.__save_data_to_excel(outer_no_aid, MISMATCH_NO_AID_FILENAME)
             self.__status_label.info(f"Done. The file has been saved to {self.__save_directory}")
             self.__show_open_file_folder_button()
-        except Exception as e:
+        except Exception:
             self.__status_label.error(
-                f"ERROR. SOMETHING WENT WRONG: {type(e)} - {str(e.with_traceback(e.__traceback__))}")
+                f"ERROR. SOMETHING WENT WRONG: {traceback.format_exc()}")
 
     # Save final result data to excel
     def __save_data_to_excel(self, data: pd.DataFrame, prefix: str = None) -> None:
