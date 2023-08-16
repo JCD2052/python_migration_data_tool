@@ -2,6 +2,7 @@ from generate_customer_data_file.data.data_classes.brand_data_load import AGNDat
 from generate_customer_data_file.data.data_classes.general_data_load import GeneralDataLoad
 
 
+# Data class for specific brand info
 class DataDescription:
     def __init__(self, brand_name, company_name, brand_code, warehouse_name, class_type) -> None:
         self.brand_name = brand_name
@@ -17,9 +18,10 @@ class DataDescription:
         return self.__repr__()
 
 
-brands = [{'brand_name': 'Take5 COSC', 'company_name': 'Take5 ', 'brand_code': '040', 'warehouse_name': 'BP040',
+# All possible selects
+brands = [{'brand_name': 'Take5 COSC', 'company_name': 'Take 5', 'brand_code': '040', 'warehouse_name': 'BP040',
            'class_type': GeneralDataLoad},
-          {'brand_name': 'Take5 FZ', 'company_name': 'Take5 ', 'brand_code': '055', 'warehouse_name': 'BP055',
+          {'brand_name': 'Take5 FZ', 'company_name': 'Take 5', 'brand_code': '055', 'warehouse_name': 'BP055',
            'class_type': GeneralDataLoad},
           {'brand_name': 'CarStar', 'company_name': 'CarStar', 'brand_code': '011', 'warehouse_name': 'BA011',
            'class_type': GeneralDataLoad},

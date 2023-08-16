@@ -1,9 +1,15 @@
-from random_address import real_random_address
+import random
+from utils.addresses import addresses
+
+
+# Get random address from addresses dict
+def get_random_address():
+    return random.choice(addresses.get('addresses'))
 
 
 class RandomAddressGenerator:
     def __init__(self) -> None:
-        address = real_random_address()
+        address = get_random_address()
         self.address_line = address['address1']
         self.zip_code = address['postalCode']
         self.city = address['city']

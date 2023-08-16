@@ -1,7 +1,9 @@
-from utils.color_constants import WHITE_COLOR, BLUE_COLOR
+from data_migration.gui.app import LABEL_WIDTH, LABEL_HEIGHT, WRAP_LENGTH
+from utils.color_constants import BLUE_COLOR, WHITE_COLOR
 from utils.data_type_constant import *
-from tkinter import ttk, Button, filedialog
+from tkinter import ttk, Button, filedialog, Label
 from generate_customer_data_file.data.type_options import brands
+from utils.label_logger import LabelLogger
 
 SELECT_BRAND = 'Select Brand'
 
@@ -15,7 +17,7 @@ COUNT = 20
 TXT_FILE_EXTENSION = '.txt'
 
 
-class TestApp:
+class GenerateCustomerFileApp:
     def __init__(self) -> None:
         self.__window = tkinter.Tk()
         self.__select_company_dropdown = tkinter.ttk.Combobox(self.__window, values=[d.brand_name for d in brands])
@@ -30,6 +32,8 @@ class TestApp:
         self.__generate_address_button = None
         self.__submit_button = None
         self.__browse_save_directory_button = None
+        self.__status_label = None
+        self.__save_directory = None
 
     def run(self) -> None:
         self.__configure_app()
@@ -47,11 +51,16 @@ class TestApp:
         self.__window.config(background=WHITE_COLOR)
 
     def __submit(self) -> None:
+        if self.__save_directory is None:
+            error_text = "Didn't select a save folder"
+            self.__status_label.erroe(error_text)
+            raise Exception(error_text)
         data = self.__brand_content.get_values_from_input_widgets()
         file_name = self.__brand_content.get_file_name()
         path = f'{self.__save_directory}//{file_name}' + TXT_FILE_EXTENSION
         with open(path, mode='w') as file:
             file.write(data)
+        self.__status_label.info(f'Saved to {path}')
 
     def __set_brand_content_on_selected_brand_name(self) -> None:
         self.__remove_primal_widgets()
@@ -94,6 +103,12 @@ class TestApp:
         self.__browse_save_directory_button = Button(self.__window,
                                                      text="Select Directory",
                                                      command=self.__select_save_directory)
+        self.__status_label = LabelLogger(Label(self.__window,
+                                                text='',
+                                                width=LABEL_WIDTH, height=LABEL_HEIGHT,
+                                                fg=BLUE_COLOR, background=WHITE_COLOR,
+                                                wraplength=WRAP_LENGTH))
         self.__submit_button.grid(column=center_column, row=current_row)
         self.__generate_address_button.grid(column=center_column, row=current_row + 1)
         self.__browse_save_directory_button.grid(column=center_column, row=current_row + 2)
+        self.__status_label.element.grid(column=center_column, row=current_row + 3)

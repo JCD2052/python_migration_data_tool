@@ -1,15 +1,13 @@
-import re
 import sys
-from datetime import datetime
 from threading import Thread
 from tkinter import filedialog, Tk, Button, Label
+from utils.string_utils import *
+from utils.excel_utils import *
 
 import pandas as pd
 
-from normalization_product_data.gui.read_excel import ReadExcel
 
-
-class App:
+class NormalizationTableApp:
     def __init__(self):
         self.window_background = 'white'
         self.window_geometry = '850x330'
@@ -85,52 +83,50 @@ class App:
         return Thread(target=self.__submit, daemon=True).start()
 
     def __submit(self):
-        try:
-            self.status_label.configure(text='Reading data files....', fg='blue')
-            template_df = ReadExcel(self.valid_brands_file_name).open_file("Data")
-            original_headers = template_df.columns
-            template_df.columns = template_df.iloc[0]
-            template_df = template_df.drop(template_df.index[0])
-            columns_with_valid_order = template_df.columns.to_numpy()
-            valid_brands = ReadExcel(self.valid_brands_file_name).open_file("ReferenceData")['brand']
-            valid_categories = ReadExcel(self.valid_brands_file_name).open_file("ReferenceData")['category']
-            df = ReadExcel(self.data_file_name).open_file()
-            df = df.fillna('')
-            df = df.drop(filter(lambda column: 'mirakl-' in str(column), df.columns), axis=1)
-            df.columns = map(lambda column: 'shop_sku' if 'sku' in column.lower() else column, df.columns)
-            brands = []
-            categories = []
-            for index, row in df.iterrows():
-                brand_string = str(row['brand'])
-                category_string = str(row['category'])
-                valid_brand = self.__find_string_in_lower_case_or_without_special_characters(brand_string, valid_brands)
-                valid_category = list(filter(
-                    lambda x: category_string.lower() in self.__get_string_without_special_characters(str(x).lower()),
-                    valid_categories))
-                valid_category = category_string if not valid_category else valid_category[0]
-                self.status_label.configure(
-                    text=f'{valid_brand} brand has been found for {brand_string} and {valid_category} category '
-                         f'has been found for {category_string} at index {index}', fg='blue')
-                brands.append(valid_brand)
-                categories.append(valid_category)
-            self.status_label.configure(text='Settings values to the columns....', fg='blue')
-            df['brand'] = pd.Series(brands)
-            df['category'] = pd.Series(categories)
+        self.status_label.configure(text='Reading data files....', fg='blue')
+        template_df = get_file_as_data_frame(self.valid_brands_file_name, "Data")
+        original_headers = template_df.columns
+        template_df.columns = template_df.iloc[0]
+        template_df = template_df.drop(template_df.index[0])
+        columns_with_valid_order = template_df.columns.to_numpy()
+        valid_brands = get_file_as_data_frame(self.valid_brands_file_name, "ReferenceData")['brand']
+        valid_categories = get_file_as_data_frame(self.valid_brands_file_name, "ReferenceData")[
+            'category']
+        df = get_file_as_data_frame(self.data_file_name)
+        df = df.fillna('')
+        df = df.drop(filter(lambda column: 'mirakl-' in str(column), df.columns), axis=1)
+        df.columns = map(lambda column: 'shop_sku' if 'sku' in column.lower() else column, df.columns)
+        brands = []
+        categories = []
+        for index, row in df.iterrows():
+            brand_string = str(row['brand'])
+            category_string = str(row['category'])
+            valid_brand = find_string_in_lower_case_or_without_special_characters(brand_string, valid_brands)
+            valid_category = list(filter(
+                lambda x: category_string.lower() in get_string_without_special_characters(str(x).lower()),
+                valid_categories))
+            valid_category = category_string if not valid_category else valid_category[0]
+            self.status_label.configure(
+                text=f'{valid_brand} brand has been found for {brand_string} and {valid_category} category '
+                     f'has been found for {category_string} at index {index}', fg='blue')
+            brands.append(valid_brand)
+            categories.append(valid_category)
+        self.status_label.configure(text='Settings values to the columns....', fg='blue')
+        df['brand'] = pd.Series(brands)
+        df['category'] = pd.Series(categories)
 
-            df = pd.merge(template_df, df, 'outer', on=list(df.columns))
-            df = df[columns_with_valid_order]
+        df = pd.merge(template_df, df, 'outer', on=list(df.columns))
+        df = df[columns_with_valid_order]
 
-            df.loc[-1] = df.columns  # adding a row
-            df.index = df.index + 1  # shifting index
-            df = df.sort_index()
-            df.columns = original_headers
-            self.status_label.configure(text='Saving data to file....')
-            current_time = App.__get_current_time_as_string()
-            path = f"{self.save_directory}/{current_time}.xlsx"
-            App.__save_excel_file(path, df)
-            self.status_label.configure(text=f"Done. The file has been saved to {path}", fg='blue')
-        except Exception as e:
-            self.status_label.configure(text=f"ERROR. SOMETHING WENT WRONG {str(e)}", fg='red')
+        df.loc[-1] = df.columns  # adding a row
+        df.index = df.index + 1  # shifting index
+        df = df.sort_index()
+        df.columns = original_headers
+        self.status_label.configure(text='Saving data to file....')
+        current_time = get_current_time_as_string()
+        path = f"{self.save_directory}/{current_time}.xlsx"
+        save_data_data_frame_as_excel_file_to_path(df, path)
+        self.status_label.configure(text=f"Done. The file has been saved to {path}", fg='blue')
 
     def __browse_valid_brands_data_file(self):
         self.valid_brands_file_name = filedialog.askopenfilename(initialdir="/",
@@ -152,36 +148,3 @@ class App:
         self.save_directory = filedialog.askdirectory()
         self.browse_save_directory_label.configure(
             text="Selected Directory to save an output file: " + self.save_directory)
-
-    @staticmethod
-    def __save_excel_file(path, data_frame):
-        data_frame.to_excel(path, index=False)
-
-    @staticmethod
-    def __get_current_time_as_string():
-        now = datetime.now()
-        return now.strftime("%m_%d_%Y_%H_%M_%S")
-
-    @staticmethod
-    def __find_string_in_lower_case_or_without_special_characters(origin_value, target_data):
-        origin_value_in_lower_case = origin_value.lower()
-        result = ''
-        found_brand_with_lower_case = list(
-            filter(lambda x: str(x).lower() == origin_value_in_lower_case or str(x).lower().startswith(
-                origin_value_in_lower_case), target_data))
-        if not found_brand_with_lower_case:
-            found_brand_without_symbols = list(
-                filter(lambda x: App.__get_string_without_special_characters(str(x).lower()) ==
-                                 App.__get_string_without_special_characters(origin_value_in_lower_case),
-                       target_data))
-            try:
-                result = found_brand_without_symbols[0]
-            except IndexError:
-                pass
-        else:
-            result = found_brand_with_lower_case[0]
-        return result
-
-    @staticmethod
-    def __get_string_without_special_characters(value):
-        return re.sub('\W+', '', value)

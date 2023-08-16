@@ -5,6 +5,7 @@ from pathlib import Path
 import os
 
 import numpy
+import pandas
 
 from utils.label_logger import LabelLogger
 from utils.excel_utils import *
@@ -113,38 +114,34 @@ class DataMigrationApp:
         return Thread(target=self.__submit, daemon=True).start()
 
     def __submit(self):
-        try:
-            self.__status_label.info("Reading template file...")
-            template_df = get_file_as_data_frame(self.__template_file_name)
-            original_headers = template_df.columns
-            template_df = self.__drop_headers_from_data_frame(template_df)
-            columns_with_valid_order = template_df.columns.to_numpy()
-            template_df = template_df.astype('string')
-            self.__status_label.info("Reading product data file...")
-            product_df = get_file_as_data_frame(self.__product_data_file_name)
-            product_df = product_df.astype('string')
-            if len(set(product_df.columns).intersection(set(columns_with_valid_order))) is 0:
-                product_df = self.__drop_headers_from_data_frame(product_df)
-            self.__status_label.info("Reading offer file...")
-            offer_df = self.__get__normalized_offer_data()
-            offer_df = offer_df.astype('string')
-            data = pd.merge(template_df, product_df, how='right', on=list(product_df.columns)).astype('string')
-            data = self.merge_with_offer_data_and_normalize(data, offer_df)
-            if not self.__product_id_dropdown_var.get():
-                raise Exception("Product id hasn't been specified")
-            elif (not self.__category_dropdown_var.get()) & (not self.__use_product_data_category_checkbox_var.get()):
-                raise Exception("Category hasn't been specified")
-            elif not self.__state_dropdown_var.get():
-                raise Exception("State hasn't been specified")
-            data = data[columns_with_valid_order]
-            data = self.set_dropdown_values(data)
-            data = self.insert_secondary_headers_as_row(data)
-            data.columns = original_headers
-            self.__save_data_to_excel(data)
-            self.__show_open_file_folder_button()
-        except Exception as e:
-            self.__status_label.error(
-                f"ERROR. SOMETHING WENT WRONG: {type(e)} - {str(e.with_traceback(e.__traceback__))}")
+        self.__status_label.info("Reading template file...")
+        template_df = get_file_as_data_frame(self.__template_file_name)
+        original_headers = template_df.columns
+        template_df = self.__drop_headers_from_data_frame(template_df)
+        columns_with_valid_order = template_df.columns.to_numpy()
+        template_df = template_df.astype('string')
+        self.__status_label.info("Reading product data file...")
+        product_df = get_file_as_data_frame(self.__product_data_file_name)
+        product_df = product_df.astype('string')
+        if len(set(product_df.columns).intersection(set(columns_with_valid_order))) is 0:
+            product_df = self.__drop_headers_from_data_frame(product_df)
+        self.__status_label.info("Reading offer file...")
+        offer_df = self.__get__normalized_offer_data()
+        offer_df = offer_df.astype('string')
+        data = pd.merge(template_df, product_df, how='right', on=list(product_df.columns)).astype('string')
+        data = self.merge_with_offer_data_and_normalize(data, offer_df)
+        if not self.__product_id_dropdown_var.get():
+            raise Exception("Product id hasn't been specified")
+        elif (not self.__category_dropdown_var.get()) & (not self.__use_product_data_category_checkbox_var.get()):
+            raise Exception("Category hasn't been specified")
+        elif not self.__state_dropdown_var.get():
+            raise Exception("State hasn't been specified")
+        data = data[columns_with_valid_order]
+        data = self.set_dropdown_values(data)
+        data = self.insert_secondary_headers_as_row(data)
+        data.columns = original_headers
+        self.__save_data_to_excel(data)
+        self.__show_open_file_folder_button()
 
     def set_dropdown_values(self, data):
         if not self.__use_product_data_category_checkbox_var.get():
@@ -265,19 +262,22 @@ class DataMigrationApp:
                 data[SKU_COLUMN_KEY].to_numpy()))
         return data
 
+    # Insert 1 row as headers
     @staticmethod
-    def insert_secondary_headers_as_row(data):
+    def insert_secondary_headers_as_row(data: pandas.DataFrame) -> pandas.DataFrame:
         data.loc[-1] = data.columns
         data.index = data.index + 1
         return data.sort_index()
 
+    # Drop original headers from data frame
     @staticmethod
-    def __drop_headers_from_data_frame(data_frame):
+    def __drop_headers_from_data_frame(data_frame: pandas.DataFrame) -> pandas.DataFrame:
         data_frame.columns = data_frame.iloc[0]
         return data_frame.drop(data_frame.index[0])
 
+    # Set dropdown element with target options
     @staticmethod
-    def __set_dropdown_with_options(dropdown_element, dropdown_var, options):
+    def __set_dropdown_with_options(dropdown_element: OptionMenu, dropdown_var: StringVar, options: List[str]) -> None:
         options = filter(lambda cell: cell != EMPTY_STRING, options)
         dropdown_element.configure(state=NORMAL_STATE)
         menu = dropdown_element['menu']
@@ -285,6 +285,7 @@ class DataMigrationApp:
         for option in options:
             menu.add_command(label=option, command=lambda o=option: dropdown_var.set(o))
 
+    # Get path as string
     @staticmethod
-    def __get_file_name_from_path(path):
+    def __get_file_name_from_path(path: str) -> str:
         return Path(path).name
