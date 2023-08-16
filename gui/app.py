@@ -119,13 +119,16 @@ class DataMigrationApp:
             original_headers = template_df.columns
             template_df = self.__drop_headers_from_data_frame(template_df)
             columns_with_valid_order = template_df.columns.to_numpy()
+            template_df = template_df.astype('string')
             self.__status_label.info("Reading product data file...")
             product_df = get_file_as_data_frame(self.__product_data_file_name)
+            product_df = product_df.astype('string')
             if len(set(product_df.columns).intersection(set(columns_with_valid_order))) is 0:
                 product_df = self.__drop_headers_from_data_frame(product_df)
             self.__status_label.info("Reading offer file...")
             offer_df = self.__get__normalized_offer_data()
-            data = pd.merge(template_df, product_df, how='right', on=list(product_df.columns))
+            offer_df = offer_df.astype('string')
+            data = pd.merge(template_df, product_df, how='right', on=list(product_df.columns)).astype('string')
             data = self.merge_with_offer_data_and_normalize(data, offer_df)
             if not self.__product_id_dropdown_var.get():
                 raise Exception("Product id hasn't been specified")
@@ -251,7 +254,7 @@ class DataMigrationApp:
     @staticmethod
     def merge_with_offer_data_and_normalize(data, offer_data):
         data = pd.merge(data, offer_data, how='left', left_on='shop_sku', right_on=SKU_COLUMN_KEY,
-                        suffixes=(LEFT_SUFFIX, RIGHT_SUFFIX))
+                        suffixes=(LEFT_SUFFIX, RIGHT_SUFFIX)).astype('string')
         data = data.fillna(EMPTY_STRING)
         cols = list(filter(lambda column: LEFT_SUFFIX not in str(column), data.columns))
         data = data[cols]
