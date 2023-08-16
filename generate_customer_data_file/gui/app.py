@@ -63,7 +63,7 @@ class GenerateCustomerFileApp:
                 file.write(data)
             self.__status_label.info(f'Saved to {path}')
         except Exception:
-            self.__status_label.configure(f"ERROR. SOMETHING WENT WRONG: {traceback.format_exc()}")
+            self.__status_label.error(f"ERROR. SOMETHING WENT WRONG: {traceback.format_exc()}")
 
     def __set_brand_content_on_selected_brand_name(self) -> None:
         self.__remove_primal_widgets()
@@ -108,10 +108,10 @@ class GenerateCustomerFileApp:
                                                      command=self.__select_save_directory)
         self.__status_label = LabelLogger(Label(self.__window,
                                                 text='',
-                                                width=LABEL_WIDTH, height=LABEL_HEIGHT,
+                                                width=100, height=10,
                                                 fg=BLUE_COLOR, background=WHITE_COLOR,
                                                 wraplength=WRAP_LENGTH))
         self.__submit_button.grid(column=center_column, row=current_row)
         self.__generate_address_button.grid(column=center_column, row=current_row + 1)
         self.__browse_save_directory_button.grid(column=center_column, row=current_row + 2)
-        self.__status_label.element.grid(column=center_column, row=current_row + 3)
+        self.__status_label.element.grid(column=center_column, row=current_row + 5)
