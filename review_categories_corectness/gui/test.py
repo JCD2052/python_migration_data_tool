@@ -13,6 +13,7 @@ from utils.label_logger import LabelLogger
 from utils.excel_utils import *
 from utils.string_utils import *
 from utils.color_constants import *
+from utils.issue_categories import IssueCategories
 
 APP_TITLE = 'Data Migration Tool'
 WINDOW_GEOMETRY = '600x500'
@@ -28,17 +29,8 @@ DEFAULT_COLUMN = 1
 
 sku_column_name = "MPSku"
 lower_and_pattern = " and "
-
-
-class IssueCategories:
-    sku_duplicate = "SKU duplicate"
-    lowercase_and = "Lowercase and"
-    special_char = "Spectial char"
-    non_breaking_space = "Non breaking space"
-    trailing_space = "Trailing space"
-    category_duplicate = "Category duplicate"
-    similar_category = "Similar category"
-    misspelled_word = "Misspelled word"
+capital_and_pattern = " And "
+non_breaking_space = u"\u00A0"
 
 
 class CategoriesCorectnessApp:
@@ -116,25 +108,24 @@ class CategoriesCorectnessApp:
                     continue
                 for index, category in df[column_name].items():
                     value = str(category)
-                    value_updated = re.sub('&', 'And', value)
+                    value_with_lower_and = value.replace(capital_and_pattern, lower_and_pattern)
+                    value_updated = re.sub('&', capital_and_pattern, value)
                     value_updated = re.sub('[ \,\-]', '', value_updated)
                     value_updated = value_updated.lower()
-                    if value == '':
+                    if not bool(value):
                         continue
                     if lower_and_pattern in value:
-                        to_color_dict[IssueCategories.lowercase_and].append((index, df.columns.get_loc(column_name)))
+                        to_color_dict[IssueCategories.lowercase_and].append((index, df.columns.get_loc(column_name)))   
+                    elif non_breaking_space in value_updated:
+                        to_color_dict[IssueCategories.non_breaking_space].append((index, df.columns.get_loc(column_name)))
+                    elif value.startswith(" ") or value.endswith(" "):
+                        to_color_dict[IssueCategories.trailing_space].append((index, df.columns.get_loc(column_name)))
                     elif not value_updated.isalnum():
                         to_color_dict[IssueCategories.special_char].append((index, df.columns.get_loc(column_name)))
-                    elif "  " in value:
-                        to_color_dict[IssueCategories.non_breaking_space].append((index, df.columns.get_loc(column_name)))
-                    elif value.startswith(" ") or  value.endswith(" "):
-                        to_color_dict[IssueCategories.trailing_space].append((index, df.columns.get_loc(column_name)))
-                    
-                    elif value not in categories_primary_set:
+                    elif value_with_lower_and not in {item.replace(capital_and_pattern, lower_and_pattern) for item in categories_primary_set}:
                         for set_of_categories in categories_updated_dict.values():
-                            if(value_updated in set_of_categories and not ("  " in value or value.startswith(" ") or value.endswith(" "))):
+                            if(value_updated in set_of_categories and not (value.startswith(" ") or value.endswith(" "))):
                                 to_color_dict[IssueCategories.similar_category].append((index, df.columns.get_loc(column_name)))
-
                     for key in categories_updated_dict.keys():
                         if(key == column_name):
                             continue
@@ -160,42 +151,42 @@ class CategoriesCorectnessApp:
                 f"ERROR. SOMETHING WENT WRONG: {traceback.format_exc()}")
 
     def __style_specific_cell(self, x, dict):
-                data_frame = pd.DataFrame('', index=x.index, columns=x.columns)
-                for key in dict.keys():
-                    match key:
-                        case IssueCategories.sku_duplicate:
-                            color = 'background-color: lightgreen'
-                            for cell in dict[IssueCategories.sku_duplicate]:
-                                data_frame.iloc[cell[0], cell[1]] = color
-                        case IssueCategories.lowercase_and:
-                            color = 'background-color: yellow'
-                            for cell in dict[IssueCategories.lowercase_and]:
-                                data_frame.iloc[cell[0], cell[1]] = color
-                        case IssueCategories.special_char:
-                            color = 'background-color: red'
-                            for cell in dict[IssueCategories.special_char]:
-                                data_frame.iloc[cell[0], cell[1]] = color
-                        case IssueCategories.non_breaking_space:
-                            color = 'background-color: blue'
-                            for cell in dict[IssueCategories.non_breaking_space]:
-                                data_frame.iloc[cell[0], cell[1]] = color
-                        case IssueCategories.trailing_space:
-                            color = 'background-color: lightblue'
-                            for cell in dict[IssueCategories.trailing_space]:
-                                data_frame.iloc[cell[0], cell[1]] = color
-                        case IssueCategories.category_duplicate:
-                            color = 'background-color: green'
-                            for cell in dict[IssueCategories.category_duplicate]:
-                                data_frame.iloc[cell[0], cell[1]] = color
-                        case IssueCategories.similar_category:
-                            color = 'background-color: orange'
-                            for cell in dict[IssueCategories.similar_category]:
-                                data_frame.iloc[cell[0], cell[1]] = color
-                        case IssueCategories.misspelled_word:
-                            color = 'background-color: lightred'
-                            for cell in dict[IssueCategories.misspelled_word]:
-                                data_frame.iloc[cell[0], cell[1]] = color
-                return data_frame
+        data_frame = pd.DataFrame('', index=x.index, columns=x.columns)
+        for key in dict.keys():
+            match key:
+                case IssueCategories.sku_duplicate:
+                    color = 'background-color: lightgreen'
+                    for cell in dict[IssueCategories.sku_duplicate]:
+                        data_frame.iloc[cell[0], cell[1]] = color
+                case IssueCategories.lowercase_and:
+                    color = 'background-color: yellow'
+                    for cell in dict[IssueCategories.lowercase_and]:
+                        data_frame.iloc[cell[0], cell[1]] = color
+                case IssueCategories.special_char:
+                    color = 'background-color: red'
+                    for cell in dict[IssueCategories.special_char]:
+                        data_frame.iloc[cell[0], cell[1]] = color
+                case IssueCategories.non_breaking_space:
+                    color = 'background-color: blue'
+                    for cell in dict[IssueCategories.non_breaking_space]:
+                        data_frame.iloc[cell[0], cell[1]] = color
+                case IssueCategories.trailing_space:
+                    color = 'background-color: lightblue'
+                    for cell in dict[IssueCategories.trailing_space]:
+                        data_frame.iloc[cell[0], cell[1]] = color
+                case IssueCategories.category_duplicate:
+                    color = 'background-color: green'
+                    for cell in dict[IssueCategories.category_duplicate]:
+                        data_frame.iloc[cell[0], cell[1]] = color
+                case IssueCategories.similar_category:
+                    color = 'background-color: orange'
+                    for cell in dict[IssueCategories.similar_category]:
+                        data_frame.iloc[cell[0], cell[1]] = color
+                case IssueCategories.misspelled_word:
+                    color = 'background-color: lightred'
+                    for cell in dict[IssueCategories.misspelled_word]:
+                        data_frame.iloc[cell[0], cell[1]] = color
+        return data_frame
     
     # Save final result data to excel
     def __save_data_to_excel(self, data: pd.DataFrame, prefix: str = None) -> None:
@@ -212,7 +203,7 @@ class CategoriesCorectnessApp:
         self.__data_file_name = self.__open_excel_file_via_dialog()
         self.__last_opened_directory = self.__data_file_name
         self.__select_data_file_label.configure(
-            text=f"Selected P1 data file: {self.__get_file_name_from_path(self.__data_file_name)}")
+            text=f"Selected data file: {self.__get_file_name_from_path(self.__data_file_name)}")
             
     # Logic when user presses select save directory
     def __select_save_directory(self) -> None:
