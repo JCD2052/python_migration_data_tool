@@ -132,3 +132,9 @@ class DuplicatesInColumnValidator(BaseValidator):
 
     def validate(self, value: str) -> bool:
         return value in BaseValidator.find_duplicates_in_dict(self.__categories_dict)
+
+class SkuDuplicateValidator(BaseValidator):
+    _COLOR = 'brown'
+
+    def validate(self, value: str) -> bool:
+        return bool(re.match(r"[A-Za-z]{2}-.*", value))
