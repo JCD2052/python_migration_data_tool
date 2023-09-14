@@ -29,7 +29,7 @@ df = df.fillna('')
 columns = list(filter(lambda x: str(x).lower().startswith('l'), df.columns))
 errors = dict()
 validators = [LowerAndValidator(), SpecialCharactersValidator(), ExtraSpacesValidator(),
-              ExtraSpacesBetweenWordsValidator(), AlmostSameWordValidator(get_unique_values_from_data_frame(df)),
+              NonBreakingSpaceValidator(), AlmostSameWordValidator(get_unique_values_from_data_frame(df)),
               SpellCheckValidator()]
 
 for column in columns:

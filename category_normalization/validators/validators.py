@@ -40,7 +40,7 @@ class SpecialCharactersValidator(BaseValidator):
     _COLOR = 'yellow'
 
     def validate(self, value: str) -> bool:
-        return not value.isalnum()
+        return not value.replace(SPACE_STRING, '').isalnum()
 
 
 class ExtraSpacesValidator(BaseValidator):
@@ -48,16 +48,15 @@ class ExtraSpacesValidator(BaseValidator):
     _COLOR = 'blue'
 
     def validate(self, value: str) -> bool:
-        return value.startswith(SPACE_STRING) or value.endswith(SPACE_STRING)
+        return value.startswith(SPACE_STRING) or value.endswith(SPACE_STRING) or f'{SPACE_STRING}{SPACE_STRING}' in value
 
 
-class ExtraSpacesBetweenWordsValidator(BaseValidator):
-    _PRIORITY = 4
-    _COLOR = 'brown'
+class NonBreakingSpaceValidator(BaseValidator):
+    _PRIORITY = 0
+    _COLOR = 'lightgreen'
 
     def validate(self, value: str) -> bool:
-        return bool(list(
-            filter(lambda x: x.endswith(SPACE_STRING) or x.startswith(SPACE_STRING), value.split(SPACE_STRING))))
+        return u"\u00A0" in value
 
 
 class AlmostSameWordValidator(BaseValidator):
