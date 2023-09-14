@@ -1,4 +1,6 @@
 import abc
+import itertools
+import re
 from typing import Set
 
 from spellchecker import SpellChecker
@@ -25,6 +27,16 @@ class BaseValidator(abc.ABC):
     @classmethod
     def get_background_color(cls) -> str:
         return f'background-color: {cls._COLOR}'
+
+    @staticmethod
+    def find_duplicates_in_dict(origin_dict: dict) -> Set[str]:
+        rev_dict = {}
+        for k, v in origin_dict.items():
+            rev_dict.setdefault(v, set()).add(k)
+
+        return set(itertools.chain.from_iterable(
+            values for key, values in rev_dict.items()
+            if len(values) > 1))
 
 
 class LowerAndValidator(BaseValidator):
@@ -64,11 +76,22 @@ class AlmostSameWordValidator(BaseValidator):
     _PRIORITY = 5
     _COLOR = 'darkblue'
 
-    def __init__(self, values: Set[str]):
-        self.__values = values
+    def __init__(self, values_list: list) -> None:
+        self.__values = values_list
 
     def validate(self, value: str) -> bool:
         return value in self.__values
+
+    @staticmethod
+    def __get_duplicate_values_with_normalization(values_list: list) -> Set[str]:
+        # columns = list(filter(lambda x: str(x).lower().startswith('l'), data_frame.columns))
+        values = {v: AlmostSameWordValidator.__normalize_category(v) for v in values_list}
+        return BaseValidator.find_duplicates_in_dict(values)
+
+    @staticmethod
+    def __normalize_category(category_string: str) -> str:
+        sub = re.sub('[^A-Za-z0-9]+', '', category_string.replace('&', 'and').lower())
+        return sub
 
 
 class SpellCheckValidator(BaseValidator):
@@ -99,3 +122,14 @@ class SpellCheckValidator(BaseValidator):
                 res = res + misspells
         print(f'final result {res}')
         return bool(res)
+
+
+class DuplicatesInColumnValidator(BaseValidator):
+    _PRIORITY = 7
+    _COLOR = 'lightyellow'
+
+    def __init__(self, categories_dict: dict) -> None:
+        self.__categories_dict = categories_dict
+
+    def validate(self, value: str) -> bool:
+        return value in BaseValidator.find_duplicates_in_dict(self.__categories_dict)
