@@ -1,15 +1,14 @@
 import abc
 import itertools
 import re
+import os
 from typing import Set
 
 from spellchecker import SpellChecker
 from textblob import Word
 
 SPACE_STRING = ' '
-spell = SpellChecker()
-spell.word_frequency.load_text_file(
-    'C:\\Users\\proje\\PycharmProjects\\python_migration_data_tool\\category_normalization\\words.txt')
+path = os.path.dirname(__file__)
 
 
 class BaseValidator(abc.ABC):
@@ -95,16 +94,18 @@ class AlmostSameWordValidator(BaseValidator):
 
 class SpellCheckValidator(BaseValidator):
     _PRIORITY = 6
-    _COLOR = 'orange'
+    _COLOR = 'orange'    
+    _spell = SpellChecker()    
+    _path_to_words_file = os.path.relpath('..\\data\\words.txt', path)
 
     def validate(self, value: str) -> bool:
-        return self.__is_word_with_errors(value)
+        return self.__is_word_with_errors(value, self._spell)
 
     @staticmethod
-    def __is_word_with_errors(word: str) -> bool:
+    def __is_word_with_errors(word: str, spell) -> bool:
         if not word:
             return False
-        res = []
+        res = []        
         words = list(filter(lambda x: x.isupper() is False and x.isalpha(), spell.split_words(word)))
         print(f'words after split: {words}')
         for word in words:
