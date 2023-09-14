@@ -12,7 +12,7 @@ errors = dict()
 validators = [LowerAndValidator(),
               SpecialCharactersValidator(),
               ExtraSpacesValidator(),
-              ExtraSpacesBetweenWordsValidator(),
+              NonBreakingSpaceValidator(),
               SpellCheckValidator(),
               AlmostSameWordValidator(unique_table_values),
               DuplicatesInColumnValidator({col: v for col in level_categories_columns for v in df[col].unique()})]
