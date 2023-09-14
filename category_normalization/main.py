@@ -6,7 +6,7 @@ df = pd.read_excel("C:\\Users\\proje\\Downloads\\SKU-Mapping-Final-Publication-2
 df = df.fillna('')
 level_categories_columns = list(filter(lambda x: str(x).lower().startswith('l'), df.columns))
 unique_table_values = list(
-    itertools.chain(*[list(filter(lambda x: x != '', df[c].unique())) for c in level_categories_columns]))
+    itertools.chain(*[list(filter(lambda x: bool(x), df[c].unique())) for c in level_categories_columns]))
 
 errors = dict()
 validators = [LowerAndValidator(),
@@ -18,7 +18,7 @@ validators = [LowerAndValidator(),
               DuplicatesInColumnValidator({col: v for col in level_categories_columns for v in df[col].unique()})]
 
 for column in level_categories_columns:
-    for value in filter(lambda x: not str(x), df[column].unique()):
+    for value in filter(lambda x: str(x), df[column].unique()):
         res = [validator for validator in validators if validator.validate(value)]
         res.sort(key=lambda x: x.get_priority())
         if res:

@@ -60,7 +60,8 @@ class ExtraSpacesValidator(BaseValidator):
     _COLOR = 'blue'
 
     def validate(self, value: str) -> bool:
-        return value.startswith(SPACE_STRING) or value.endswith(SPACE_STRING) or f'{SPACE_STRING}{SPACE_STRING}' in value
+        return value.startswith(SPACE_STRING) or value.endswith(
+            SPACE_STRING) or f'{SPACE_STRING}{SPACE_STRING}' in value
 
 
 class NonBreakingSpaceValidator(BaseValidator):
@@ -79,11 +80,10 @@ class AlmostSameWordValidator(BaseValidator):
         self.__values = values_list
 
     def validate(self, value: str) -> bool:
-        return value in self.__values
+        return value in self.__get_duplicate_values_with_normalization(self.__values)
 
     @staticmethod
     def __get_duplicate_values_with_normalization(values_list: list) -> Set[str]:
-        # columns = list(filter(lambda x: str(x).lower().startswith('l'), data_frame.columns))
         values = {v: AlmostSameWordValidator.__normalize_category(v) for v in values_list}
         return BaseValidator.find_duplicates_in_dict(values)
 
