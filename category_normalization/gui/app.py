@@ -1,11 +1,8 @@
-import os
 import tkinter
 import traceback
 from pathlib import Path
 from threading import Thread
 from tkinter import Tk, Button, Label, filedialog
-
-import pandas as pd
 
 from utils.label_logger import LabelLogger
 from utils.excel_utils import *
@@ -16,7 +13,7 @@ from category_normalization.validators.validators import *
 SPACE_STRING = ' '
 sku_column_name = "MPSku"
 
-APP_TITLE = 'Category Normalization Tool'
+APP_TITLE = 'Category Validation Tool'
 WINDOW_GEOMETRY = '600x300'
 BUTTON_TEXT = 'Select File'
 LABEL_HEIGHT = 2
@@ -34,8 +31,8 @@ class CategoryNormalizationApp:
         self.__window = Tk()
         self.__select_data_file_label = self.__create_label_element('Select Excel file:')
         self.__select_data_file_button = Button(self.__window,
-                                                   text=BUTTON_TEXT,
-                                                   command=self.__select_data_file)
+                                                text=BUTTON_TEXT,
+                                                command=self.__select_data_file)
 
         self.__submit_button = Button(self.__window,
                                       text="Submit",
@@ -76,7 +73,14 @@ class CategoryNormalizationApp:
     def __submit(self) -> None:
         try:
             self.__status_label.info(f'Normalization of table {Path(self.__data_file_name).name}...')
-            df = get_file_as_data_frame(self.__data_file_name)
+            sheet_name = pd.ExcelFile(self.__data_file_name).sheet_names[0]
+            self.__status_label.info(f'first sheet: {sheet_name}')
+            df = get_file_as_data_frame(self.__data_file_name, sheet_name)
+            self.__status_label.info(f'Replacing formulas.....')
+            with pd.ExcelWriter(self.__data_file_name, mode="a", engine='openpyxl',
+                                if_sheet_exists='replace') as writer:
+                df.to_excel(writer, sheet_name=sheet_name, index=False, engine='openpyxl')
+            self.__status_label.info(f'Replaced.')
             df = df.fillna('')
             level_categories_columns = list(filter(lambda x: str(x).lower().startswith('l'), df.columns))
             unique_table_values = list(
@@ -99,30 +103,29 @@ class CategoryNormalizationApp:
                     if res:
                         errors.update({value: res[0].get_background_color()})
 
-            if(sku_column_name in df.columns):
+            if sku_column_name in df.columns:
                 for value in df[df[sku_column_name].duplicated() == True][sku_column_name].unique():
                     if SkuDuplicateValidator().validate(value):
                         errors.update({value: SkuDuplicateValidator.get_background_color()})
 
             styled = df.style.applymap(lambda x: errors.get(x, None))
 
-            with pd.ExcelWriter(self.__data_file_name, mode="a", if_sheet_exists="replace") as writer:
+            with pd.ExcelWriter(self.__data_file_name, mode="a", engine='openpyxl') as writer:
                 self.__status_label.info(f'Saving file to {self.__data_file_name}...')
-                styled.to_excel(writer, sheet_name="Normalized", index=False)
-            self.__status_label.info(f"\"Normalized\" sheet been added to {self.__data_file_name}")
+                styled.to_excel(writer, sheet_name=f"Validated - {get_current_time_as_string()}", index=False,
+                                engine='openpyxl')
+            self.__status_label.info(f"\"Validated\" sheet been added to {self.__data_file_name}")
             self.__show_open_file_folder_button()
 
         except Exception:
             print(traceback.format_exc())
-            self.__status_label.error(
-                f"ERROR. SOMETHING WENT WRONG: {traceback.format_exc()}")
+            self.__status_label.error(f"ERROR. SOMETHING WENT WRONG: {traceback.format_exc()}")
 
     # Logic when user presses select file
     def __select_data_file(self) -> None:
         self.__data_file_name = self.__open_excel_file_via_dialog()
         self.__select_data_file_label.configure(
             text=f"Selected data file: {Path(self.__data_file_name).name}")
-           
 
     # Show open selected directory after main logic
     def __show_open_file_folder_button(self) -> None:
@@ -134,7 +137,7 @@ class CategoryNormalizationApp:
     # Get save directory
     def __open_file_folder(self):
         return os.startfile(os.path.dirname(self.__data_file_name))
-    
+
     # Create label
     def __create_label_element(self, text) -> Label:
         return Label(self.__window,
@@ -143,12 +146,13 @@ class CategoryNormalizationApp:
                      fg=BLUE_COLOR, background=WHITE_COLOR,
                      wraplength=WRAP_LENGTH)
 
-    # Open file with window dialog and save directory
-    def __open_excel_file_via_dialog(self) -> str:
-        return filedialog.askopenfilename(title="Select a file",
-                                          filetypes=(("Excel files",
-                                                      "*.xls*"),))
-
     # Get last used row
     def __get_rows_size(self) -> int:
         return self.__window.grid_size()[1]
+
+    # Open file with window dialog and save directory
+    @staticmethod
+    def __open_excel_file_via_dialog() -> str:
+        return filedialog.askopenfilename(title="Select a file",
+                                          filetypes=(("Excel files",
+                                                      "*.xls*"),))

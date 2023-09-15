@@ -105,7 +105,6 @@ class SpellCheckValidator(BaseValidator):
         if not word:
             return False
         res = []
-        res = []
         words = list(filter(lambda x: x.isupper() is False and x.isalpha(), spell.split_words(word)))
         print(f'words after split: {words}')
         for word in words:
@@ -135,12 +134,9 @@ class DuplicatesInColumnValidator(BaseValidator):
         return value in BaseValidator.find_duplicates_in_dict(self.__categories_dict)
 
 
-
 class SkuDuplicateValidator(BaseValidator):
-    _PRIORITY = 8
     _PRIORITY = 8
     _COLOR = 'brown'
 
     def validate(self, value: str) -> bool:
         return bool(re.match(r"[A-Za-z]{2}-.*", value))
-

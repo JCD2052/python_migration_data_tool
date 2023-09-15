@@ -6,9 +6,9 @@ __EXCEL_FILE_EXTENSION = 'xlsx'
 # Read Excel file as DataFrame
 def get_file_as_data_frame(path: str, sheet_name: str = None) -> pd.DataFrame:
     if sheet_name is None:
-        return pd.read_excel(path)
+        return pd.read_excel(path, engine='openpyxl')
     else:
-        return pd.read_excel(path, sheet_name=sheet_name)
+        return pd.read_excel(path, sheet_name=sheet_name, engine='openpyxl')
 
 
 # Save a dataframe to selected path as .xlsx file
