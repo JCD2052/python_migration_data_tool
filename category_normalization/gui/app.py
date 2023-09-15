@@ -1,27 +1,28 @@
+import os
 import tkinter
 import traceback
 from pathlib import Path
 from threading import Thread
 from tkinter import Tk, Button, Label, filedialog
-from shutil import copy
+
+import pandas as pd
 
 from utils.label_logger import LabelLogger
 from utils.excel_utils import *
 from utils.string_utils import *
 from utils.color_constants import *
 from category_normalization.validators.validators import *
-
 SPACE_STRING = ' '
 sku_column_name = "MPSku"
 
-APP_TITLE = 'Category Validation'
-WINDOW_GEOMETRY = '600x500'
+APP_TITLE = 'Category Normalization Tool'
+WINDOW_GEOMETRY = '600x300'
 BUTTON_TEXT = 'Select File'
 LABEL_HEIGHT = 2
 LABEL_WIDTH = 80
 SUBMIT_HEIGHT = 2
 SUBMIT_WIDTH = 10
-WRAP_LENGTH = 600
+WRAP_LENGTH = 500
 ROW_STEP = 3
 DEFAULT_COLUMN = 1
 EXCEL_FILE_EXTENSION = '.xlsx'
@@ -32,18 +33,8 @@ class CategoryNormalizationApp:
         self.__window = Tk()
         self.__select_data_file_label = self.__create_label_element('Select Excel file:')
         self.__select_data_file_button = Button(self.__window,
-                                                text=BUTTON_TEXT,
-                                                command=self.__select_data_file)
-
-        # self.__select_words_file_label = self.__create_label_element('Select words file:')
-        # self.__select_words_file_button = Button(self.__window,
-        #                                          text=BUTTON_TEXT,
-        #                                          command=self.__select_words_file)
-
-        self.__browse_save_directory_label = self.__create_label_element('Select a folder to save the file:')
-        self.__browse_save_directory_button = Button(self.__window,
-                                                     text="Select Directory",
-                                                     command=self.__select_save_directory)
+                                                   text=BUTTON_TEXT,
+                                                   command=self.__select_data_file)
 
         self.__submit_button = Button(self.__window,
                                       text="Submit",
@@ -54,10 +45,6 @@ class CategoryNormalizationApp:
         self.__status_label = LabelLogger(self.__create_label_element(EMPTY_STRING))
 
         self.__data_file_name = EMPTY_STRING
-        self.__words_file_name = EMPTY_STRING
-        self.__save_directory = EMPTY_STRING
-
-        self.__last_opened_directory = "/"
         self.__last_position_in_grid = None
 
     def run(self):
@@ -83,16 +70,12 @@ class CategoryNormalizationApp:
     # Wrap a submit logic into separated thread
     def __wrap_submit_command_into_thread(self) -> None:
         return Thread(target=self.__submit, daemon=True).start()
-
+    
     # Main logic when user press submit
-    def __submit(self) -> None:
+    def __submit(self) -> None:        
         try:
-            self.__status_label.info(
-                f'Normalization of table {self.__get_file_name_from_path(self.__data_file_name)}...')
-            current_time = get_current_time_as_string()
-            save_path = f"{self.__save_directory}/{current_time}{EXCEL_FILE_EXTENSION}"
-            copy(self.__data_file_name, save_path)
-            df = get_file_as_data_frame(save_path)
+            self.__status_label.info(f'Normalization of table {Path(self.__data_file_name).name}...')
+            df = get_file_as_data_frame(self.__data_file_name)
             df = df.fillna('')
             level_categories_columns = list(filter(lambda x: str(x).lower().startswith('l'), df.columns))
             unique_table_values = list(
@@ -100,13 +83,12 @@ class CategoryNormalizationApp:
 
             errors = dict()
             validators = [LowerAndValidator(),
-                          SpecialCharactersValidator(),
-                          ExtraSpacesValidator(),
-                          NonBreakingSpaceValidator(),
-                          SpellCheckValidator(),
-                          AlmostSameWordValidator(unique_table_values),
-                          DuplicatesInColumnValidator(
-                              {col: v for col in level_categories_columns for v in df[col].unique()})]
+                        SpecialCharactersValidator(),
+                        ExtraSpacesValidator(),
+                        NonBreakingSpaceValidator(),
+                        SpellCheckValidator(),
+                        AlmostSameWordValidator(unique_table_values),
+                        DuplicatesInColumnValidator({col: v for col in level_categories_columns for v in df[col].unique()})]
 
             for column in level_categories_columns:
                 for value in filter(lambda x: str(x), df[column].unique()):
@@ -115,53 +97,30 @@ class CategoryNormalizationApp:
                     if res:
                         errors.update({value: res[0].get_background_color()})
 
-            for value in df[df[sku_column_name].duplicated() == True][sku_column_name].unique():
-                if SkuDuplicateValidator().validate(value):
-                    errors.update({value: SkuDuplicateValidator.get_background_color()})
+            if(sku_column_name in df.columns):
+                for value in df[df[sku_column_name].duplicated() == True][sku_column_name].unique():
+                    if SkuDuplicateValidator().validate(value):
+                        errors.update({value: SkuDuplicateValidator.get_background_color()})
 
             styled = df.style.applymap(lambda x: errors.get(x, None))
 
-            with pd.ExcelWriter(save_path, mode="a") as writer:
-                self.__status_label.info(f'Saving file to {save_path}...')
+            with pd.ExcelWriter(self.__data_file_name, mode="a", if_sheet_exists="replace") as writer:
+                self.__status_label.info(f'Saving file to {self.__data_file_name}...')
                 styled.to_excel(writer, sheet_name="Normalized", index=False)
-            self.__status_label.info(f"Done. The file has been saved to {self.__save_directory}")
+            self.__status_label.info(f"\"Normalized\" sheet been added to {self.__data_file_name}")
             self.__show_open_file_folder_button()
-
+        
         except Exception:
+            print(traceback.format_exc())
             self.__status_label.error(
                 f"ERROR. SOMETHING WENT WRONG: {traceback.format_exc()}")
-
-    # Save final result data to excel
-    def __save_data_to_excel(self, data: pd.DataFrame, prefix: str = None) -> None:
-        if prefix is None:
-            prefix = ''
-        current_time = get_current_time_as_string()
-        save_path = f"{self.__save_directory}/{prefix}_{current_time}"
-        self.__status_label.info(f'Saving file to {save_path}...')
-        save_data_data_frame_as_excel_file_to_path(data, save_path)
-        self.__status_label.info(f"Done. The file has been saved to {save_path}")
 
     # Logic when user presses select file
     def __select_data_file(self) -> None:
         self.__data_file_name = self.__open_excel_file_via_dialog()
-        self.__last_opened_directory = self.__data_file_name
         self.__select_data_file_label.configure(
-            text=f"Selected data file: {self.__get_file_name_from_path(self.__data_file_name)}")
-
-    # Logic when user presses select file
-    # def __select_words_file(self) -> None:
-    #     self.__words_file_name = self.__open_txt_file_via_dialog()
-    #     # SpellCheckValidator()._path_to_words_file = self.__words_file_name
-    #     self.__last_opened_directory = self.__data_file_name
-    #     self.__select_words_file_label.configure(
-    #         text=f"Selected words file: {self.__get_file_name_from_path(self.__words_file_name)}")
-
-    # Logic when user presses select save directory
-    def __select_save_directory(self) -> None:
-        self.__save_directory = filedialog.askdirectory()
-        self.__last_opened_directory = self.__save_directory
-        self.__browse_save_directory_label.configure(
-            text="Selected Directory to save an output file: " + self.__save_directory)
+            text=f"Selected data file: {Path(self.__data_file_name).name}")
+           
 
     # Show open selected directory after main logic
     def __show_open_file_folder_button(self) -> None:
@@ -172,8 +131,8 @@ class CategoryNormalizationApp:
 
     # Get save directory
     def __open_file_folder(self):
-        return os.startfile(self.__save_directory)
-
+        return os.startfile(os.path.dirname(self.__data_file_name))
+    
     # Create label
     def __create_label_element(self, text) -> Label:
         return Label(self.__window,
@@ -184,22 +143,10 @@ class CategoryNormalizationApp:
 
     # Open file with window dialog and save directory
     def __open_excel_file_via_dialog(self) -> str:
-        return filedialog.askopenfilename(initialdir=self.__last_opened_directory,
-                                          title="Select a file",
+        return filedialog.askopenfilename(title="Select a file",
                                           filetypes=(("Excel files",
                                                       "*.xls*"),))
-
-    def __open_txt_file_via_dialog(self) -> str:
-        return filedialog.askopenfilename(initialdir=self.__last_opened_directory,
-                                          title="Select a file",
-                                          filetypes=((f"Txt files",
-                                                      f"*.txt*"),))
 
     # Get last used row
     def __get_rows_size(self) -> int:
         return self.__window.grid_size()[1]
-
-    # Receive string value from entered path
-    @staticmethod
-    def __get_file_name_from_path(file_path: str) -> str:
-        return Path(file_path).name

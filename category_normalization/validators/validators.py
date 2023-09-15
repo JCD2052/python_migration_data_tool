@@ -1,6 +1,7 @@
 import abc
 import itertools
 import re
+import os
 from typing import Set
 
 from spellchecker import SpellChecker
@@ -94,7 +95,7 @@ class SpellCheckValidator(BaseValidator):
     _PRIORITY = 6
     _COLOR = 'orange'
     _spell = SpellChecker()
-    _spell.word_frequency.load_text_file('src\\words.txt')
+    _spell.word_frequency.load_text_file(os.path.join(os.path.dirname(__file__), '..\\..\\src\\words.txt'))
 
     def validate(self, value: str) -> bool:
         return self.__is_word_with_errors(value, self._spell)
