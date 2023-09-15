@@ -1,14 +1,12 @@
 import abc
 import itertools
 import re
-import os
 from typing import Set
 
 from spellchecker import SpellChecker
 from textblob import Word
 
 SPACE_STRING = ' '
-path = os.path.dirname(__file__)
 
 
 class BaseValidator(abc.ABC):
@@ -94,9 +92,9 @@ class AlmostSameWordValidator(BaseValidator):
 
 class SpellCheckValidator(BaseValidator):
     _PRIORITY = 6
-    _COLOR = 'orange'    
-    _spell = SpellChecker()    
-    _path_to_words_file = os.path.relpath('..\\data\\words.txt', path)
+    _COLOR = 'orange'
+    _spell = SpellChecker()
+    _spell.word_frequency.load_text_file('src\\words.txt')
 
     def validate(self, value: str) -> bool:
         return self.__is_word_with_errors(value, self._spell)
@@ -105,7 +103,7 @@ class SpellCheckValidator(BaseValidator):
     def __is_word_with_errors(word: str, spell) -> bool:
         if not word:
             return False
-        res = []        
+        res = []
         words = list(filter(lambda x: x.isupper() is False and x.isalpha(), spell.split_words(word)))
         print(f'words after split: {words}')
         for word in words:
@@ -134,7 +132,9 @@ class DuplicatesInColumnValidator(BaseValidator):
     def validate(self, value: str) -> bool:
         return value in BaseValidator.find_duplicates_in_dict(self.__categories_dict)
 
+
 class SkuDuplicateValidator(BaseValidator):
+    _PRIORITY = 8
     _COLOR = 'brown'
 
     def validate(self, value: str) -> bool:

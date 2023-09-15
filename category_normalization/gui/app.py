@@ -1,4 +1,3 @@
-import os
 import tkinter
 import traceback
 from pathlib import Path
@@ -6,17 +5,16 @@ from threading import Thread
 from tkinter import Tk, Button, Label, filedialog
 from shutil import copy
 
-import pandas as pd
-
 from utils.label_logger import LabelLogger
 from utils.excel_utils import *
 from utils.string_utils import *
 from utils.color_constants import *
 from category_normalization.validators.validators import *
+
 SPACE_STRING = ' '
 sku_column_name = "MPSku"
 
-APP_TITLE = 'Data Migration Tool'
+APP_TITLE = 'Category Validation'
 WINDOW_GEOMETRY = '600x500'
 BUTTON_TEXT = 'Select File'
 LABEL_HEIGHT = 2
@@ -34,14 +32,14 @@ class CategoryNormalizationApp:
         self.__window = Tk()
         self.__select_data_file_label = self.__create_label_element('Select Excel file:')
         self.__select_data_file_button = Button(self.__window,
-                                                   text=BUTTON_TEXT,
-                                                   command=self.__select_data_file)
-        
-        self.__select_words_file_label = self.__create_label_element('Select words file:')
-        self.__select_words_file_button = Button(self.__window,
-                                                   text=BUTTON_TEXT,
-                                                   command=self.__select_words_file)
-        
+                                                text=BUTTON_TEXT,
+                                                command=self.__select_data_file)
+
+        # self.__select_words_file_label = self.__create_label_element('Select words file:')
+        # self.__select_words_file_button = Button(self.__window,
+        #                                          text=BUTTON_TEXT,
+        #                                          command=self.__select_words_file)
+
         self.__browse_save_directory_label = self.__create_label_element('Select a folder to save the file:')
         self.__browse_save_directory_button = Button(self.__window,
                                                      text="Select Directory",
@@ -85,15 +83,16 @@ class CategoryNormalizationApp:
     # Wrap a submit logic into separated thread
     def __wrap_submit_command_into_thread(self) -> None:
         return Thread(target=self.__submit, daemon=True).start()
-    
+
     # Main logic when user press submit
-    def __submit(self) -> None:        
+    def __submit(self) -> None:
         try:
-            self.__status_label.info(f'Normalization of table {self.__get_file_name_from_path(self.__data_file_name)}...')
+            self.__status_label.info(
+                f'Normalization of table {self.__get_file_name_from_path(self.__data_file_name)}...')
             current_time = get_current_time_as_string()
-            path = f"{self.__save_directory}/{current_time}{EXCEL_FILE_EXTENSION}" 
-            copy(self.__data_file_name, path)
-            df = get_file_as_data_frame(path)
+            save_path = f"{self.__save_directory}/{current_time}{EXCEL_FILE_EXTENSION}"
+            copy(self.__data_file_name, save_path)
+            df = get_file_as_data_frame(save_path)
             df = df.fillna('')
             level_categories_columns = list(filter(lambda x: str(x).lower().startswith('l'), df.columns))
             unique_table_values = list(
@@ -101,12 +100,13 @@ class CategoryNormalizationApp:
 
             errors = dict()
             validators = [LowerAndValidator(),
-                        SpecialCharactersValidator(),
-                        ExtraSpacesValidator(),
-                        NonBreakingSpaceValidator(),
-                        SpellCheckValidator(),
-                        AlmostSameWordValidator(unique_table_values),
-                        DuplicatesInColumnValidator({col: v for col in level_categories_columns for v in df[col].unique()})]
+                          SpecialCharactersValidator(),
+                          ExtraSpacesValidator(),
+                          NonBreakingSpaceValidator(),
+                          SpellCheckValidator(),
+                          AlmostSameWordValidator(unique_table_values),
+                          DuplicatesInColumnValidator(
+                              {col: v for col in level_categories_columns for v in df[col].unique()})]
 
             for column in level_categories_columns:
                 for value in filter(lambda x: str(x), df[column].unique()):
@@ -121,25 +121,25 @@ class CategoryNormalizationApp:
 
             styled = df.style.applymap(lambda x: errors.get(x, None))
 
-            with pd.ExcelWriter(path, mode="a") as writer:
-                self.__status_label.info(f'Saving file to {path}...')
+            with pd.ExcelWriter(save_path, mode="a") as writer:
+                self.__status_label.info(f'Saving file to {save_path}...')
                 styled.to_excel(writer, sheet_name="Normalized", index=False)
             self.__status_label.info(f"Done. The file has been saved to {self.__save_directory}")
             self.__show_open_file_folder_button()
-        
+
         except Exception:
             self.__status_label.error(
                 f"ERROR. SOMETHING WENT WRONG: {traceback.format_exc()}")
-    
+
     # Save final result data to excel
     def __save_data_to_excel(self, data: pd.DataFrame, prefix: str = None) -> None:
         if prefix is None:
             prefix = ''
         current_time = get_current_time_as_string()
-        path = f"{self.__save_directory}/{prefix}_{current_time}"
-        self.__status_label.info(f'Saving file to {path}...')
-        save_data_data_frame_as_excel_file_to_path(data, path)
-        self.__status_label.info(f"Done. The file has been saved to {path}")
+        save_path = f"{self.__save_directory}/{prefix}_{current_time}"
+        self.__status_label.info(f'Saving file to {save_path}...')
+        save_data_data_frame_as_excel_file_to_path(data, save_path)
+        self.__status_label.info(f"Done. The file has been saved to {save_path}")
 
     # Logic when user presses select file
     def __select_data_file(self) -> None:
@@ -147,15 +147,15 @@ class CategoryNormalizationApp:
         self.__last_opened_directory = self.__data_file_name
         self.__select_data_file_label.configure(
             text=f"Selected data file: {self.__get_file_name_from_path(self.__data_file_name)}")
-        
+
     # Logic when user presses select file
-    def __select_words_file(self) -> None:
-        self.__words_file_name = self.__open_txt_file_via_dialog()
-        SpellCheckValidator()._path_to_words_file = self.__words_file_name
-        self.__last_opened_directory = self.__data_file_name
-        self.__select_words_file_label.configure(
-            text=f"Selected words file: {self.__get_file_name_from_path(self.__words_file_name)}")
-            
+    # def __select_words_file(self) -> None:
+    #     self.__words_file_name = self.__open_txt_file_via_dialog()
+    #     # SpellCheckValidator()._path_to_words_file = self.__words_file_name
+    #     self.__last_opened_directory = self.__data_file_name
+    #     self.__select_words_file_label.configure(
+    #         text=f"Selected words file: {self.__get_file_name_from_path(self.__words_file_name)}")
+
     # Logic when user presses select save directory
     def __select_save_directory(self) -> None:
         self.__save_directory = filedialog.askdirectory()
@@ -188,7 +188,7 @@ class CategoryNormalizationApp:
                                           title="Select a file",
                                           filetypes=(("Excel files",
                                                       "*.xls*"),))
-    
+
     def __open_txt_file_via_dialog(self) -> str:
         return filedialog.askopenfilename(initialdir=self.__last_opened_directory,
                                           title="Select a file",
@@ -201,5 +201,5 @@ class CategoryNormalizationApp:
 
     # Receive string value from entered path
     @staticmethod
-    def __get_file_name_from_path(path: str) -> str:
-        return Path(path).name
+    def __get_file_name_from_path(file_path: str) -> str:
+        return Path(file_path).name
