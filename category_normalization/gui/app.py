@@ -12,6 +12,7 @@ from utils.excel_utils import *
 from utils.string_utils import *
 from utils.color_constants import *
 from category_normalization.validators.validators import *
+
 SPACE_STRING = ' '
 sku_column_name = "MPSku"
 
@@ -70,9 +71,9 @@ class CategoryNormalizationApp:
     # Wrap a submit logic into separated thread
     def __wrap_submit_command_into_thread(self) -> None:
         return Thread(target=self.__submit, daemon=True).start()
-    
+
     # Main logic when user press submit
-    def __submit(self) -> None:        
+    def __submit(self) -> None:
         try:
             self.__status_label.info(f'Normalization of table {Path(self.__data_file_name).name}...')
             df = get_file_as_data_frame(self.__data_file_name)
@@ -83,12 +84,13 @@ class CategoryNormalizationApp:
 
             errors = dict()
             validators = [LowerAndValidator(),
-                        SpecialCharactersValidator(),
-                        ExtraSpacesValidator(),
-                        NonBreakingSpaceValidator(),
-                        SpellCheckValidator(),
-                        AlmostSameWordValidator(unique_table_values),
-                        DuplicatesInColumnValidator({col: v for col in level_categories_columns for v in df[col].unique()})]
+                          SpecialCharactersValidator(),
+                          ExtraSpacesValidator(),
+                          NonBreakingSpaceValidator(),
+                          SpellCheckValidator(),
+                          AlmostSameWordValidator(unique_table_values),
+                          DuplicatesInColumnValidator(
+                              {col: v for col in level_categories_columns for v in df[col].unique()})]
 
             for column in level_categories_columns:
                 for value in filter(lambda x: str(x), df[column].unique()):
@@ -109,7 +111,7 @@ class CategoryNormalizationApp:
                 styled.to_excel(writer, sheet_name="Normalized", index=False)
             self.__status_label.info(f"\"Normalized\" sheet been added to {self.__data_file_name}")
             self.__show_open_file_folder_button()
-        
+
         except Exception:
             print(traceback.format_exc())
             self.__status_label.error(
