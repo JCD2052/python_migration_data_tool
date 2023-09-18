@@ -93,8 +93,7 @@ class CategoryNormalizationApp:
                           NonBreakingSpaceValidator(),
                           SpellCheckValidator(),
                           AlmostSameWordValidator(unique_table_values),
-                          DuplicatesInColumnValidator(
-                              {col: v for col in level_categories_columns for v in df[col].unique()})]
+                          DuplicatesInColumnValidator(unique_table_values)]
 
             for column in level_categories_columns:
                 for value in filter(lambda x: str(x), df[column].unique()):

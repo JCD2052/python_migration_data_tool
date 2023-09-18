@@ -82,6 +82,7 @@ class AlmostSameWordValidator(BaseValidator):
 
     @staticmethod
     def __get_duplicate_values_with_normalization(values_list: list) -> Set[str]:
+        values_list = list(set([value.replace(" And ", " and ").replace(SPACE_STRING, '') for value in values_list]))
         values = {v: AlmostSameWordValidator.__normalize_category(v) for v in values_list}
         return BaseValidator.find_duplicates_in_dict(values)
 
@@ -125,13 +126,13 @@ class SpellCheckValidator(BaseValidator):
 
 class DuplicatesInColumnValidator(BaseValidator):
     _PRIORITY = 7
-    _COLOR = 'lightyellow'
+    _COLOR = 'red'
 
-    def __init__(self, categories_dict: dict) -> None:
-        self.__categories_dict = categories_dict
+    def __init__(self, categories_list: list) -> None:
+        self.categories_list = categories_list
 
     def validate(self, value: str) -> bool:
-        return value in BaseValidator.find_duplicates_in_dict(self.__categories_dict)
+        return self.categories_list.count(value) > 1
 
 
 class SkuDuplicateValidator(BaseValidator):
