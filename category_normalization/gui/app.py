@@ -1,5 +1,6 @@
 import tkinter
 import traceback
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Thread
 from tkinter import Tk, Button, Label, filedialog
@@ -16,7 +17,7 @@ sku_column_name = "MPSku"
 APP_TITLE = 'Category Validation Tool'
 WINDOW_GEOMETRY = '600x300'
 BUTTON_TEXT = 'Select File'
-LABEL_HEIGHT = 2
+LABEL_HEIGHT = 4
 LABEL_WIDTH = 80
 SUBMIT_HEIGHT = 2
 SUBMIT_WIDTH = 10
@@ -62,6 +63,7 @@ class CategoryNormalizationApp:
         for index, widget in enumerate(widgets):
             self.__getattribute__(widget).grid(column=DEFAULT_COLUMN, row=index)
             self.__window.rowconfigure(index, minsize=40)
+
         self.__status_label.element.grid(column=DEFAULT_COLUMN, row=self.__get_rows_size() + 1)
         self.__last_position_in_grid = self.__get_rows_size()
 
@@ -76,47 +78,78 @@ class CategoryNormalizationApp:
             sheet_name = pd.ExcelFile(self.__data_file_name).sheet_names[0]
             self.__status_label.info(f'first sheet: {sheet_name}')
             df = get_file_as_data_frame(self.__data_file_name, sheet_name)
-            self.__status_label.info(f'Replacing formulas.....')
-            with pd.ExcelWriter(self.__data_file_name, mode="a", engine='openpyxl',
-                                if_sheet_exists='replace') as writer:
-                df.to_excel(writer, sheet_name=sheet_name, index=False, engine='openpyxl')
-            self.__status_label.info(f'Replaced.')
+
+            def replaced_formulas():
+                with pd.ExcelWriter(self.__data_file_name, engine='openpyxl') as excel_writer:
+                    df.to_excel(excel_writer, sheet_name=sheet_name, index=False, engine='openpyxl')
+                self.__status_label.info(f'Replaced.')
+
+            formulas_replacing_thread = Thread(target=replaced_formulas, daemon=True)
             df = df.fillna('')
+            formulas_replacing_thread.start()
             level_categories_columns = list(filter(lambda x: str(x).lower().startswith('l'), df.columns))
             unique_table_values = list(
                 itertools.chain(*[list(filter(lambda x: bool(x), df[c].unique())) for c in level_categories_columns]))
 
+            column_values = dict()
+            for col in level_categories_columns:
+                for v in filter(lambda x: bool(x), df[col].unique()):
+                    if v not in column_values:
+                        column_values.update({v: [col]})
+                    else:
+                        column_values[v] = column_values[v] + [col]
+
             errors = dict()
+            errors_df = []
             validators = [LowerAndValidator(),
                           SpecialCharactersValidator(),
                           ExtraSpacesValidator(),
                           NonBreakingSpaceValidator(),
                           SpellCheckValidator(),
                           AlmostSameWordValidator(unique_table_values),
-                          DuplicatesInColumnValidator(
-                              {col: v for col in level_categories_columns for v in df[col].unique()})]
+                          DuplicatesInColumnValidator(column_values)]
 
-            for column in level_categories_columns:
-                for value in filter(lambda x: str(x), df[column].unique()):
-                    res = [validator for validator in validators if validator.validate(value)]
-                    res.sort(key=lambda x: x.get_priority())
-                    if res:
-                        errors.update({value: res[0].get_background_color()})
+            with ThreadPoolExecutor(max_workers=8) as executor:
+                for column in level_categories_columns:
+                    def validate_value():
+                        for value in filter(lambda x: str(x), df[column].unique()):
+                            self.__status_label.info(f'Checking {value} in column {column}')
+                            results = []
+                            validator_message = []
+                            for validator in validators:
+                                result = validator.validate(value)
+                                if result[0]:
+                                    results.append(validator)
+                                    validator_message.append(result[1])
+                            results.sort(key=lambda x: x.get_priority())
+                            if results:
+                                color = results[0].get_background_color()
+                                errors_df.append({"Value": value, "Reason": ". ".join(validator_message)})
+                                errors.update({value: color})
 
+                    executor.submit(validate_value)
             if sku_column_name in df.columns:
-                for value in df[df[sku_column_name].duplicated() == True][sku_column_name].unique():
-                    if SkuDuplicateValidator().validate(value):
-                        errors.update({value: SkuDuplicateValidator.get_background_color()})
+                self.__status_label.info(f'Checking skus column for duplicates...')
+                for sku in df[df[sku_column_name].duplicated() == True][sku_column_name].unique():
+                    if SkuDuplicateValidator().validate(sku):
+                        errors.update({sku: SkuDuplicateValidator.get_background_color()})
 
             styled = df.style.applymap(lambda x: errors.get(x, None))
-
-            with pd.ExcelWriter(self.__data_file_name, mode="a", engine='openpyxl') as writer:
-                self.__status_label.info(f'Saving file to {self.__data_file_name}...')
-                styled.to_excel(writer, sheet_name=f"Validated - {get_current_time_as_string()}", index=False,
-                                engine='openpyxl')
-            self.__status_label.info(f"\"Validated\" sheet been added to {self.__data_file_name}")
+            while formulas_replacing_thread.is_alive():
+                self.__status_label.info(f'Replacing..')
+                self.__status_label.info(f'Replacing....')
+                self.__status_label.info(f'Replacing......')
+            formulas_replacing_thread.join()
+            with pd.ExcelWriter(self.__data_file_name, mode="a", engine='openpyxl',
+                                if_sheet_exists='replace') as writer:
+                self.__status_label.info(f'Saving tabs.....')
+                styled.to_excel(writer, sheet_name="Validated", index=False, engine='openpyxl')
+                pd.DataFrame(errors_df).style.applymap(lambda x: errors.get(x, None)).to_excel(writer,
+                                                                                               sheet_name="Errors",
+                                                                                               index=False,
+                                                                                               engine='openpyxl')
+            self.__status_label.info('Results have been saved.')
             self.__show_open_file_folder_button()
-
         except Exception:
             print(traceback.format_exc())
             self.__status_label.error(f"ERROR. SOMETHING WENT WRONG: {traceback.format_exc()}")
