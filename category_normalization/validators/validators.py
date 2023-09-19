@@ -13,6 +13,7 @@ SPACE_STRING = ' '
 class BaseValidator(abc.ABC):
     _PRIORITY = int()
     _COLOR = ''
+    _NAME = ''
 
     @abc.abstractmethod
     def validate(self, value: str) -> Tuple[bool, str]:
@@ -21,6 +22,10 @@ class BaseValidator(abc.ABC):
     @classmethod
     def get_priority(cls) -> int:
         return cls._PRIORITY
+    
+    @classmethod
+    def get_name(cls) -> str:
+        return cls._NAME
 
     @classmethod
     def get_background_color(cls) -> str:
@@ -44,6 +49,7 @@ class BaseValidator(abc.ABC):
 class LowerAndValidator(BaseValidator):
     _PRIORITY = 6
     _COLOR = 'green'
+    _NAME = 'Lower \'and\''
 
     def validate(self, value: str) -> Tuple[bool, str]:
         return ' and ' in value, 'Value contains \'and\' inside '
@@ -52,6 +58,7 @@ class LowerAndValidator(BaseValidator):
 class SpecialCharactersValidator(BaseValidator):
     _PRIORITY = 8
     _COLOR = 'yellow'
+    _NAME = 'Special character'
 
     def validate(self, value: str) -> Tuple[bool, str]:
         replaced_value = value.replace(SPACE_STRING, '')
@@ -65,6 +72,7 @@ class SpecialCharactersValidator(BaseValidator):
 class ExtraSpacesValidator(BaseValidator):
     _PRIORITY = 5
     _COLOR = 'blue'
+    _NAME = 'Extra spaces'
 
     def validate(self, value: str) -> Tuple[bool, str]:
         return (value.startswith(SPACE_STRING) or value.endswith(
@@ -74,7 +82,8 @@ class ExtraSpacesValidator(BaseValidator):
 
 class NonBreakingSpaceValidator(BaseValidator):
     _PRIORITY = 4
-    _COLOR = 'lightgreen'
+    _COLOR = 'lightblue'
+    _NAME = 'Non-breaking space'
 
     def validate(self, value: str) -> Tuple[bool, str]:
         return u"\u00A0" in value, f'Value has non-breaking space inside.'
@@ -82,7 +91,8 @@ class NonBreakingSpaceValidator(BaseValidator):
 
 class AlmostSameWordValidator(BaseValidator):
     _PRIORITY = 3
-    _COLOR = 'red'
+    _COLOR = 'grey'
+    _NAME = 'Almost same word'
 
     def __init__(self, values_list: list) -> None:
         self.__duplicate_dict = self.__get_duplicate_values_with_normalization(values_list)
@@ -108,6 +118,7 @@ class AlmostSameWordValidator(BaseValidator):
 class SpellCheckValidator(BaseValidator):
     _PRIORITY = 7
     _COLOR = 'orange'
+    _NAME = 'Misspelled word'
     __spell = SpellChecker()
     __spell.word_frequency.load_text_file(os.path.join(os.path.dirname(__file__), '..\\..\\src\\words.txt'))
 
@@ -135,6 +146,7 @@ class SpellCheckValidator(BaseValidator):
 class DuplicatesInColumnValidator(BaseValidator):
     _PRIORITY = 2
     _COLOR = 'red'
+    _NAME = "Duplicate in another column"
 
     def __init__(self, category_leveling: Dict[str, List[str]]) -> None:
         self.__category_leveling = category_leveling
@@ -148,6 +160,7 @@ class DuplicatesInColumnValidator(BaseValidator):
 class SkuDuplicateValidator(BaseValidator):
     _PRIORITY = 1
     _COLOR = 'brown'
+    _NAME = 'Duplicate in MPSku column'
 
     def validate(self, value: str) -> Tuple[bool, str]:
-        return bool(re.match(r"[A-Za-z]{2}-.*", value)), ''
+        return bool(re.match(r"[A-Za-z]{2}-.*", value)), f'Value \'{value}\' has duplicates in Sku column'
