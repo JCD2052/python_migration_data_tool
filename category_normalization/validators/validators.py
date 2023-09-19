@@ -94,9 +94,10 @@ class AlmostSameWordValidator(BaseValidator):
                 f'{" ,".join(self.__duplicate_dict.get(self.__normalize_category(value)))}')
 
     @staticmethod
-    def __get_duplicate_values_with_normalization(values_list: list) -> dict:
+    def __get_duplicate_values_with_normalization(values_list: list) -> Set[str]:
+        values_list = list(set([value.replace(" And ", " and ").replace(SPACE_STRING, '') for value in values_list]))
         values = {v: AlmostSameWordValidator.__normalize_category(v) for v in values_list}
-        return BaseValidator.build_duplicates_dict(values)
+        return BaseValidator.find_duplicates_in_dict(values)
 
     @staticmethod
     def __normalize_category(category_string: str) -> str:
@@ -133,7 +134,7 @@ class SpellCheckValidator(BaseValidator):
 
 class DuplicatesInColumnValidator(BaseValidator):
     _PRIORITY = 2
-    _COLOR = 'lightyellow'
+    _COLOR = 'red'
 
     def __init__(self, category_leveling: Dict[str, List[str]]) -> None:
         self.__category_leveling = category_leveling
