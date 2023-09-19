@@ -92,7 +92,7 @@ class NonBreakingSpaceValidator(BaseValidator):
 class AlmostSameWordValidator(BaseValidator):
     _PRIORITY = 3
     _COLOR = 'grey'
-    _NAME = 'Almost same word'
+    _NAME = 'Almost same category name'
 
     def __init__(self, values_list: list) -> None:
         self.__duplicate_dict = self.__get_duplicate_values_with_normalization(values_list)
@@ -100,12 +100,12 @@ class AlmostSameWordValidator(BaseValidator):
 
     def validate(self, value: str) -> Tuple[bool, str]:
         return (value in self.__duplicate_values,
-                f'Value has almost values: '
+                f'Value has almost same category name: '
                 f'{" ,".join(self.__duplicate_dict.get(self.__normalize_category(value)))}')
 
     @staticmethod
     def __get_duplicate_values_with_normalization(values_list: list) -> dict:
-        values_list = list(set([value.replace(" And ", " and ").replace(SPACE_STRING, '') for value in values_list]))
+        values_list = list(set([value.replace(" and ", " And ").strip() for value in values_list]))
         values = {v: AlmostSameWordValidator.__normalize_category(v) for v in values_list}
         return BaseValidator.build_duplicates_dict(values)
 
