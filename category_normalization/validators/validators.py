@@ -53,7 +53,7 @@ class BaseValidator(abc.ABC):
 
 
 class LowerAndValidator(BaseValidator):
-    _PRIORITY = 6
+    _PRIORITY = 7
     _COLOR = 'green'
     _NAME = 'Lower \'and\''
 
@@ -62,8 +62,8 @@ class LowerAndValidator(BaseValidator):
 
 
 class SpecialCharactersValidator(BaseValidator):
-    _PRIORITY = 8
-    _COLOR = 'yellow'
+    _PRIORITY = 9
+    _COLOR = 'grey'
     _NAME = 'Special character'
 
     def validate(self, value: str) -> Tuple[bool, str]:
@@ -76,7 +76,7 @@ class SpecialCharactersValidator(BaseValidator):
 
 
 class ExtraSpacesValidator(BaseValidator):
-    _PRIORITY = 5
+    _PRIORITY = 6
     _COLOR = 'lightgreen'
     _NAME = 'Extra space'
 
@@ -87,7 +87,7 @@ class ExtraSpacesValidator(BaseValidator):
 
 
 class NonBreakingSpaceValidator(BaseValidator):
-    _PRIORITY = 4
+    _PRIORITY = 5
     _COLOR = 'lightblue'
     _NAME = 'Non-breaking space'
 
@@ -96,8 +96,8 @@ class NonBreakingSpaceValidator(BaseValidator):
 
 
 class AlmostSameWordValidator(BaseValidator):
-    _PRIORITY = 3
-    _COLOR = 'grey'
+    _PRIORITY = 4
+    _COLOR = 'yellow'
     _NAME = 'Almost same category name'
 
     def __init__(self, values_list: list) -> None:
@@ -122,7 +122,7 @@ class AlmostSameWordValidator(BaseValidator):
 
 
 class SpellCheckValidator(BaseValidator):
-    _PRIORITY = 7
+    _PRIORITY = 8
     _COLOR = 'orange'
     _NAME = 'Misspelled word'
     __SPELL_CHECKER = SpellChecker()
@@ -176,10 +176,25 @@ class DuplicatesInColumnValidator(BaseValidator):
                 f'Value duplicated in the next columns {" , ".join(levels)}')
 
 
-class SkuDuplicateValidator(BaseValidator):
+class DuplicateInSkuValidator(BaseValidator):
     _PRIORITY = 1
     _COLOR = 'brown'
     _NAME = 'Duplicate in MPSku column'
 
+    def __init__(self, duplicates_list: list) -> None:        
+        self.duplucates_list = [value.lower() for value in duplicates_list]
+
     def validate(self, value: str) -> Tuple[bool, str]:
-        return bool(re.match(r"[A-Za-z]{2}-.*", value)), f'Value \'{value}\' has duplicates in Sku column'
+        return (bool(re.match(r"[A-Za-z]{2}-.*", value)) and (value.lower() in self.duplucates_list),
+            f'Value has duplicates in Sku column')
+
+class UpperMPInSkuValidator(BaseValidator):
+    _PRIORITY = 3
+    _COLOR = 'pink'
+    _NAME = 'Upper \'MP-\' in MPSku column'
+
+    def validate(self, value: str) -> Tuple[bool, str]:
+        if value.lower().startswith("mp-"):
+            return not bool(re.match(r"mp-.*", value)), f'Value contains uppercase char'
+        else:
+            return False, f'Value  doesn\'t start with "mp-"'
