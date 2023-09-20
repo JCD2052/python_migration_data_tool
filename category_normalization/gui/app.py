@@ -132,7 +132,6 @@ class CategoryNormalizationApp:
             if sku_column_name in df.columns:
                 self.__status_label.info(f'Checking skus column for duplicates...')
                 sku_duplicates = list(df[df[sku_column_name].duplicated() == True][sku_column_name].unique())
-                print(sku_duplicates)
                 sku_validators = [UpperMPInSkuValidator(), DuplicateInSkuValidator(sku_duplicates)]
                 for value in filter(lambda x: str(x), df[sku_column_name].unique()):
                     validator_message = []
