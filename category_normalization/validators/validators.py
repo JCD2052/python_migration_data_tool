@@ -135,11 +135,11 @@ class SpellCheckValidator(BaseValidator):
         errors = self.__check_for_errors_by_spellcheckers(value)
         return bool(errors), f'Value has next spellchecks errors: {", ".join(errors)}'
 
-    def __check_for_errors_by_spellcheckers(self, word: str) -> List[str]:
-        if not word:
+    def __check_for_errors_by_spellcheckers(self, value: str) -> List[str]:
+        if not value:
             return []
         res = []
-        words = list(filter(lambda x: x.isupper() is False and x.isalpha(), self.__SPELL_CHECKER.split_words(word)))
+        words = list(filter(lambda x: x.isupper() is False and x.isalpha(), self.__SPELL_CHECKER.split_words(value)))
         for word in words:
             misspells = list(self.__SPELL_CHECKER.unknown([word]))
             if not misspells:
@@ -150,15 +150,14 @@ class SpellCheckValidator(BaseValidator):
                 misspells = list(self.__SPELL_CHECKER.unknown([singular]))
                 res = res + misspells
         if res:
-            google_search_result = self.__check_spelling_in_google_search(word)
-            res = [] if not google_search_result else google_search_result
+            google_search_result = self.__check_spelling_in_google_search(value)
+            res = [] if not google_search_result else[google_search_result]
         return res
 
     def __check_spelling_in_google_search(self, word: str) -> str:
         response = self.__GOOGLE_SEARCH_CLIENT.get_response(word)
         print(response.status_code)
         soup = BeautifulSoup(response.text, "html.parser")
-
         parent_tag = soup.find('a', id='fprsl')
         return parent_tag.find_next().text if parent_tag is not None else EMPTY_STRING
 

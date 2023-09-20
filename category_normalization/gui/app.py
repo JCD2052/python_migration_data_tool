@@ -125,14 +125,13 @@ class CategoryNormalizationApp:
                         errors.update({category_value: bg_color})
 
                 values = list(filter(lambda x: str(x), df[column].unique()))
-                with ThreadPoolExecutor(max_workers=32) as executor:
+                with ThreadPoolExecutor(max_workers=8) as executor:
                     futures = [executor.submit(check_value, v) for v in values]
                     [call.result() for call in futures]
 
             if sku_column_name in df.columns:
                 self.__status_label.info(f'Checking skus column for duplicates...')
                 sku_duplicates = list(df[df[sku_column_name].duplicated() == True][sku_column_name].unique())
-                print(sku_duplicates)
                 sku_validators = [UpperMPInSkuValidator(), DuplicateInSkuValidator(sku_duplicates)]
                 for value in filter(lambda x: str(x), df[sku_column_name].unique()):
                     validator_message = []
@@ -143,7 +142,6 @@ class CategoryNormalizationApp:
                             results.append(sku_validator)
                             validator_message.append(result[1])
                     results.sort(key=lambda x: x.get_priority())
-                    print(results)
                     if results:
                         color = results[0].get_background_color()
                         errors_df.append({"Value": value, "Reason": ". ".join(validator_message)})
