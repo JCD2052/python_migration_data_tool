@@ -156,6 +156,7 @@ class SpellCheckValidator(BaseValidator):
 
     def __check_spelling_in_google_search(self, word: str) -> str:
         response = self.__GOOGLE_SEARCH_CLIENT.get_response(word)
+        print(response.status_code)
         soup = BeautifulSoup(response.text, "html.parser")
 
         parent_tag = soup.find('a', id='fprsl')

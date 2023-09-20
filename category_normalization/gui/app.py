@@ -1,4 +1,3 @@
-import os
 import tkinter
 import traceback
 from concurrent.futures import ThreadPoolExecutor
@@ -110,23 +109,23 @@ class CategoryNormalizationApp:
                           DuplicatesInColumnValidator(column_values)]
 
             for column in level_categories_columns:
-                def check_value(value):
-                    self.__status_label.info(f'Checking {value} in column {column}')
-                    ress = []
-                    mes = []
+                def check_value(category_value):
+                    self.__status_label.info(f'Checking {category_value} in column {column}')
+                    failed_validators = []
+                    messages = []
                     for val in validators:
-                        res = val.validate(value)
+                        res = val.validate(category_value)
                         if res[0]:
-                            ress.append(val)
-                            mes.append(res[1])
-                    ress.sort(key=lambda x: x.get_priority())
-                    if ress:
-                        color = ress[0].get_background_color()
-                        errors_df.append({"Value": value, "Reason": ". ".join(mes)})
-                        errors.update({value: color})
+                            failed_validators.append(val)
+                            messages.append(res[1])
+                    failed_validators.sort(key=lambda x: x.get_priority())
+                    if failed_validators:
+                        bg_color = failed_validators[0].get_background_color()
+                        errors_df.append({"Value": category_value, "Reason": ". ".join(messages)})
+                        errors.update({category_value: bg_color})
 
                 values = list(filter(lambda x: str(x), df[column].unique()))
-                with ThreadPoolExecutor(max_workers=8) as executor:
+                with ThreadPoolExecutor(max_workers=32) as executor:
                     futures = [executor.submit(check_value, v) for v in values]
                     [call.result() for call in futures]
 
@@ -141,18 +140,18 @@ class CategoryNormalizationApp:
                     for sku_validator in sku_validators:
                         result = sku_validator.validate(value)
                         if result[0]:
-                        results.append(sku_validator)
-                        validator_message.append(result[1])
+                            results.append(sku_validator)
+                            validator_message.append(result[1])
                     results.sort(key=lambda x: x.get_priority())
                     print(results)
                     if results:
                         color = results[0].get_background_color()
                         errors_df.append({"Value": value, "Reason": ". ".join(validator_message)})
-errors.update({value: color})
-            
+                        errors.update({value: color})
+
             criteries_colored = dict()
             criteria_names = []
-            validators.extend([DuplicateInSkuValidator(list()),UpperMPInSkuValidator()])
+            validators.extend([DuplicateInSkuValidator(list()), UpperMPInSkuValidator()])
             for validator in sorted(validators, key=lambda x: x.get_priority()):
                 priority_name = f"Priority {validator.get_priority()}. {validator.get_name()}"
                 criteria_names.append({"Normalization criteries": priority_name})
