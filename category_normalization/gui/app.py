@@ -126,20 +126,27 @@ class CategoryNormalizationApp:
 
             if sku_column_name in df.columns:
                 self.__status_label.info(f'Checking skus column for duplicates...')
-                for sku in df[df[sku_column_name].duplicated() == True][sku_column_name].unique():
-                    results = []
+                sku_duplicates = list(df[df[sku_column_name].duplicated() == True][sku_column_name].unique())
+                print(sku_duplicates)
+                sku_validators = [UpperMPInSkuValidator(), DuplicateInSkuValidator(sku_duplicates)]
+                for value in filter(lambda x: str(x), df[sku_column_name].unique()):
                     validator_message = []
-                    result = SkuDuplicateValidator().validate(sku)
-                    if result[0]:
-                            results.append(SkuDuplicateValidator())
+                    results = []
+                    for sku_validator in sku_validators:
+                        result = sku_validator.validate(value)
+                        if result[0]:
+                            results.append(sku_validator)
                             validator_message.append(result[1])
+                    results.sort(key=lambda x: x.get_priority())
+                    print(results)
                     if results:
-                        errors.update({sku: SkuDuplicateValidator.get_background_color()})
-                        errors_df.append({"Value": sku, "Reason": ". ".join(validator_message)})
+                        color = results[0].get_background_color()
+                        errors_df.append({"Value": value, "Reason": ". ".join(validator_message)})
+                        errors.update({value: color})
             
             criteries_colored = dict()
             criteria_names = []
-            validators.append(SkuDuplicateValidator())
+            validators.extend([DuplicateInSkuValidator(list()),UpperMPInSkuValidator()])
             for validator in sorted(validators, key=lambda x: x.get_priority()):
                 priority_name = f"Priority {validator.get_priority()}. {validator.get_name()}"
                 criteria_names.append({"Normalization criteries": priority_name})
