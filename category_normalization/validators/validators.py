@@ -61,7 +61,7 @@ class SpecialCharactersValidator(BaseValidator):
     _NAME = 'Special character'
 
     def validate(self, value: str) -> Tuple[bool, str]:
-        replaced_value = value.replace(SPACE_STRING, '')
+        replaced_value = value.replace(SPACE_STRING, '').replace(',', '')
         spec_characters = ", ".join(
             [f'"{char}"' for char in set(re.sub("[a-zA-Z0-9]", "", replaced_value))])
         return (not replaced_value.isalnum(),
@@ -71,8 +71,8 @@ class SpecialCharactersValidator(BaseValidator):
 
 class ExtraSpacesValidator(BaseValidator):
     _PRIORITY = 5
-    _COLOR = 'blue'
-    _NAME = 'Extra spaces'
+    _COLOR = 'lightgreen'
+    _NAME = 'Extra space'
 
     def validate(self, value: str) -> Tuple[bool, str]:
         return (value.startswith(SPACE_STRING) or value.endswith(
@@ -146,7 +146,7 @@ class SpellCheckValidator(BaseValidator):
 class DuplicatesInColumnValidator(BaseValidator):
     _PRIORITY = 2
     _COLOR = 'red'
-    _NAME = "Duplicate in another column"
+    _NAME = "Duplicate in category value"
 
     def __init__(self, category_leveling: Dict[str, List[str]]) -> None:
         self.__category_leveling = category_leveling

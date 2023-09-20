@@ -124,14 +124,6 @@ class CategoryNormalizationApp:
                         errors_df.append({"Value": value, "Reason": ". ".join(validator_message)})
                         errors.update({value: color})
 
-            priority_names = []
-            validators.append(SkuDuplicateValidator())
-            validators.sort(key=lambda x: x.get_priority())            
-            for validator in validators:
-                priority_name = f"Priority {validator.get_priority()}. {validator.get_name()}"
-                priority_names.append(priority_name)
-                errors.update({priority_name: validator.get_background_color()})
-
             if sku_column_name in df.columns:
                 self.__status_label.info(f'Checking skus column for duplicates...')
                 for sku in df[df[sku_column_name].duplicated() == True][sku_column_name].unique():
@@ -144,6 +136,14 @@ class CategoryNormalizationApp:
                     if results:
                         errors.update({sku: SkuDuplicateValidator.get_background_color()})
                         errors_df.append({"Value": sku, "Reason": ". ".join(validator_message)})
+            
+            criteries_colored = dict()
+            criteria_names = []
+            validators.append(SkuDuplicateValidator())
+            for validator in sorted(validators, key=lambda x: x.get_priority()):
+                priority_name = f"Priority {validator.get_priority()}. {validator.get_name()}"
+                criteria_names.append({"Normalization criteries": priority_name})
+                criteries_colored.update({priority_name: validator.get_background_color()})
 
             styled = df.style.applymap(lambda x: errors.get(x, None))
             while formulas_replacing_thread.is_alive():
@@ -155,13 +155,14 @@ class CategoryNormalizationApp:
                                 if_sheet_exists='replace') as writer:
                 self.__status_label.info(f'Saving tabs.....')
                 styled.to_excel(writer, sheet_name="Validated", index=False, engine='openpyxl')
-                errors_df = pd.DataFrame(errors_df)
-                errors_df["Normalization criteries by priority"] = pd.Series(priority_names)
-                errors_df.fillna('')
-                errors_df.style.applymap(lambda x: errors.get(x, None)).to_excel(writer,
-                                                                                sheet_name="Errors",
-                                                                                index=False,
-                                                                                engine='openpyxl')
+                pd.DataFrame(errors_df).style.applymap(lambda x: errors.get(x, None)).to_excel(writer,
+                                                                                            sheet_name="Errors",
+                                                                                            index=False,
+                                                                                            engine='openpyxl')
+                pd.DataFrame(criteria_names).style.applymap(lambda x: criteries_colored.get(x, None)).to_excel(writer,
+                                                                                                                sheet_name="Criteries",
+                                                                                                                index=False,
+                                                                                                                engine='openpyxl')
             self.__status_label.info('Results have been saved.')
             self.__show_open_file_folder_button()
         except Exception:
