@@ -1,11 +1,17 @@
 import abc
 import itertools
-import re
 import os
+import re
 from typing import Set, Tuple, List, Dict
 
 from spellchecker import SpellChecker
 from textblob import Word
+
+from utils.string_utils import EMPTY_STRING
+
+from bs4 import BeautifulSoup
+
+from category_normalization.validators.google_search_client import GoogleSearchClient
 
 SPACE_STRING = ' '
 
@@ -22,7 +28,7 @@ class BaseValidator(abc.ABC):
     @classmethod
     def get_priority(cls) -> int:
         return cls._PRIORITY
-    
+
     @classmethod
     def get_name(cls) -> str:
         return cls._NAME
@@ -119,28 +125,41 @@ class SpellCheckValidator(BaseValidator):
     _PRIORITY = 7
     _COLOR = 'orange'
     _NAME = 'Misspelled word'
-    __spell = SpellChecker()
-    __spell.word_frequency.load_text_file(os.path.join(os.path.dirname(__file__), '..\\..\\src\\words.txt'))
+    __SPELL_CHECKER = SpellChecker()
+    __DICT_PATH = os.path.join(os.path.dirname(__file__), '..\\..\\src\\words.txt')
+    __SPELL_CHECKER.word_frequency.load_text_file(__DICT_PATH)
+    __GOOGLE_SEARCH_CLIENT = GoogleSearchClient()
+    __A_TAG = 'a'
 
     def validate(self, value: str) -> Tuple[bool, str]:
-        errors = self.__get_errors_from_word(value)
+        errors = self.__check_for_errors_by_spellcheckers(value)
         return bool(errors), f'Value has next spellchecks errors: {", ".join(errors)}'
 
-    def __get_errors_from_word(self, word: str) -> List[str]:
+    def __check_for_errors_by_spellcheckers(self, word: str) -> List[str]:
         if not word:
             return []
         res = []
-        words = list(filter(lambda x: x.isupper() is False and x.isalpha(), self.__spell.split_words(word)))
+        words = list(filter(lambda x: x.isupper() is False and x.isalpha(), self.__SPELL_CHECKER.split_words(word)))
         for word in words:
-            misspells = list(self.__spell.unknown([word]))
+            misspells = list(self.__SPELL_CHECKER.unknown([word]))
             if not misspells:
                 res = res + misspells
                 continue
             else:
                 singular = Word(word).singularize().string
-                misspells = list(self.__spell.unknown([singular]))
+                misspells = list(self.__SPELL_CHECKER.unknown([singular]))
                 res = res + misspells
+        if res:
+            google_search_result = self.__check_spelling_in_google_search(word)
+            res = [] if not google_search_result else google_search_result
         return res
+
+    def __check_spelling_in_google_search(self, word: str) -> str:
+        response = self.__GOOGLE_SEARCH_CLIENT.get_response(word)
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        parent_tag = soup.find('a', id='fprsl')
+        return parent_tag.find_next().text if parent_tag is not None else EMPTY_STRING
 
 
 class DuplicatesInColumnValidator(BaseValidator):

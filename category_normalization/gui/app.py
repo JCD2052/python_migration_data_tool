@@ -1,12 +1,13 @@
+import os
 import tkinter
 import traceback
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Thread
 from tkinter import Tk, Button, Label, filedialog
 
 from utils.label_logger import LabelLogger
 from utils.excel_utils import *
-from utils.string_utils import *
 from utils.color_constants import *
 from category_normalization.validators.validators import *
 
@@ -109,20 +110,25 @@ class CategoryNormalizationApp:
                           DuplicatesInColumnValidator(column_values)]
 
             for column in level_categories_columns:
-                for value in filter(lambda x: str(x), df[column].unique()):
+                def check_value(value):
                     self.__status_label.info(f'Checking {value} in column {column}')
-                    results = []
-                    validator_message = []
-                    for validator in validators:
-                        result = validator.validate(value)
-                        if result[0]:
-                            results.append(validator)
-                            validator_message.append(result[1])
-                    results.sort(key=lambda x: x.get_priority())
-                    if results:
-                        color = results[0].get_background_color()
-                        errors_df.append({"Value": value, "Reason": ". ".join(validator_message)})
+                    ress = []
+                    mes = []
+                    for val in validators:
+                        res = val.validate(value)
+                        if res[0]:
+                            ress.append(val)
+                            mes.append(res[1])
+                    ress.sort(key=lambda x: x.get_priority())
+                    if ress:
+                        color = ress[0].get_background_color()
+                        errors_df.append({"Value": value, "Reason": ". ".join(mes)})
                         errors.update({value: color})
+
+                values = list(filter(lambda x: str(x), df[column].unique()))
+                with ThreadPoolExecutor(max_workers=8) as executor:
+                    futures = [executor.submit(check_value, v) for v in values]
+                    [call.result() for call in futures]
 
             if sku_column_name in df.columns:
                 self.__status_label.info(f'Checking skus column for duplicates...')
@@ -131,12 +137,12 @@ class CategoryNormalizationApp:
                     validator_message = []
                     result = SkuDuplicateValidator().validate(sku)
                     if result[0]:
-                            results.append(SkuDuplicateValidator())
-                            validator_message.append(result[1])
+                        results.append(SkuDuplicateValidator())
+                        validator_message.append(result[1])
                     if results:
                         errors.update({sku: SkuDuplicateValidator.get_background_color()})
                         errors_df.append({"Value": sku, "Reason": ". ".join(validator_message)})
-            
+
             criteries_colored = dict()
             criteria_names = []
             validators.append(SkuDuplicateValidator())
@@ -156,13 +162,13 @@ class CategoryNormalizationApp:
                 self.__status_label.info(f'Saving tabs.....')
                 styled.to_excel(writer, sheet_name="Validated", index=False, engine='openpyxl')
                 pd.DataFrame(errors_df).style.applymap(lambda x: errors.get(x, None)).to_excel(writer,
-                                                                                            sheet_name="Errors",
-                                                                                            index=False,
-                                                                                            engine='openpyxl')
+                                                                                               sheet_name="Errors",
+                                                                                               index=False,
+                                                                                               engine='openpyxl')
                 pd.DataFrame(criteria_names).style.applymap(lambda x: criteries_colored.get(x, None)).to_excel(writer,
-                                                                                                                sheet_name="Criteries",
-                                                                                                                index=False,
-                                                                                                                engine='openpyxl')
+                                                                                                               sheet_name="Criteries",
+                                                                                                               index=False,
+                                                                                                               engine='openpyxl')
             self.__status_label.info('Results have been saved.')
             self.__show_open_file_folder_button()
         except Exception:
