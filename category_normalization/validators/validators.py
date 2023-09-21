@@ -76,7 +76,7 @@ class SpecialCharactersValidator(BaseValidator):
 
 
 class ExtraSpacesValidator(BaseValidator):
-    _PRIORITY = 6
+    _PRIORITY = 5
     _COLOR = 'lightgreen'
     _NAME = 'Extra space'
 
@@ -87,7 +87,7 @@ class ExtraSpacesValidator(BaseValidator):
 
 
 class NonBreakingSpaceValidator(BaseValidator):
-    _PRIORITY = 5
+    _PRIORITY = 4
     _COLOR = 'lightblue'
     _NAME = 'Non-breaking space'
 
@@ -96,7 +96,7 @@ class NonBreakingSpaceValidator(BaseValidator):
 
 
 class AlmostSameWordValidator(BaseValidator):
-    _PRIORITY = 4
+    _PRIORITY = 6
     _COLOR = 'yellow'
     _NAME = 'Almost same category name'
 
@@ -107,11 +107,11 @@ class AlmostSameWordValidator(BaseValidator):
     def validate(self, value: str) -> Tuple[bool, str]:
         return (value in self.__duplicate_values,
                 f'Value has almost same category name: '
-                f'{" ,".join(self.__duplicate_dict.get(self.__normalize_category(value)))}')
+                f'({"), (".join(self.__duplicate_dict.get(self.__normalize_category(value)))})')
 
     @staticmethod
     def __get_duplicate_values_with_normalization(values_list: list) -> dict:
-        values_list = list(set([value.replace(" and ", " And ").strip() for value in values_list]))
+        values_list = list(set([value.replace(" and ", " And ") for value in values_list]))
         values = {v: AlmostSameWordValidator.__normalize_category(v) for v in values_list}
         return BaseValidator.build_duplicates_dict(values)
 
