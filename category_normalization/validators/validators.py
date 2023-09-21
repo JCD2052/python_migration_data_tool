@@ -153,7 +153,7 @@ class SpellCheckValidator(BaseValidator):
                 res = res + misspells
         if res:
             google_search_result = self.__check_spelling_in_google_search(value)
-            if not google_search_result:
+            if google_search_result:
                 with self.__L0CK:
                     with open(self.__DICT_PATH, mode='a+') as file:
                         file.seek(0)
@@ -161,8 +161,7 @@ class SpellCheckValidator(BaseValidator):
                         for w in res:
                             if w.lower() not in content:
                                 file.write(f"{w},")
-                    self.__SPELL_CHECKER.word_frequency.load_text_file(self.__DICT_PATH)
-            return [] if not google_search_result else [google_search_result]
+                return [] if not google_search_result else [google_search_result]
         return res
 
     def __check_spelling_in_google_search(self, word: str) -> str:
