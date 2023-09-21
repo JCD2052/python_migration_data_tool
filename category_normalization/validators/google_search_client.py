@@ -17,6 +17,6 @@ class GoogleSearchClient:
         self.__session = cloudscraper.create_scraper(delay=15, browser={'custom': 'ScraperBot/1.0'})
 
     def get_response(self, searched_value) -> requests.Response:
-        params = {"q": searched_value}
+        params = {"q": searched_value, "gl": "us","hl": "en"}
         headers = {'User-Agent': random.choice(self.__user_agent_list)}
         return self.__session.get(self.__url, params=params, headers=headers, allow_redirects=True)

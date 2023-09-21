@@ -130,6 +130,7 @@ class SpellCheckValidator(BaseValidator):
     __SPELL_CHECKER.word_frequency.load_text_file(__DICT_PATH)
     __GOOGLE_SEARCH_CLIENT = GoogleSearchClient()
     __A_TAG = 'a'
+    __TAG_ID = 'fprsl'
     __L0CK = Lock()
 
     def validate(self, value: str) -> Tuple[bool, str]:
@@ -155,8 +156,11 @@ class SpellCheckValidator(BaseValidator):
             if not google_search_result:
                 with self.__L0CK:
                     with open(self.__DICT_PATH, mode='a+') as file:
-                        content = file.read()
-                        file.write("," + ",".join(filter(lambda x: x not in content, res)))
+                        file.seek(0)
+                        content = [x.lower() for x in file.read().split(",")]
+                        for w in res:
+                            if w.lower() not in content:
+                                file.write(f"{w},")
                     self.__SPELL_CHECKER.word_frequency.load_text_file(self.__DICT_PATH)
             return [] if not google_search_result else [google_search_result]
         return res
@@ -165,7 +169,7 @@ class SpellCheckValidator(BaseValidator):
         response = self.__GOOGLE_SEARCH_CLIENT.get_response(word)
         print(response.status_code)
         soup = BeautifulSoup(response.text, "html.parser")
-        parent_tag = soup.find('a', id='fprsl')
+        parent_tag = soup.find(self.__A_TAG, id=self.__TAG_ID)
         return parent_tag.find_next().text if parent_tag is not None else EMPTY_STRING
 
 
