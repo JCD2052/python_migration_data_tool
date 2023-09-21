@@ -8,7 +8,7 @@ from spellchecker import SpellChecker
 from textblob import Word
 
 from utils.string_utils import EMPTY_STRING
-
+from threading import Lock
 from bs4 import BeautifulSoup
 
 from category_normalization.validators.google_search_client import GoogleSearchClient
@@ -130,6 +130,7 @@ class SpellCheckValidator(BaseValidator):
     __SPELL_CHECKER.word_frequency.load_text_file(__DICT_PATH)
     __GOOGLE_SEARCH_CLIENT = GoogleSearchClient()
     __A_TAG = 'a'
+    __L0CK = Lock()
 
     def validate(self, value: str) -> Tuple[bool, str]:
         errors = self.__check_for_errors_by_spellcheckers(value)
@@ -151,7 +152,13 @@ class SpellCheckValidator(BaseValidator):
                 res = res + misspells
         if res:
             google_search_result = self.__check_spelling_in_google_search(value)
-            res = [] if not google_search_result else[google_search_result]
+            if not google_search_result:
+                with self.__L0CK:
+                    with open(self.__DICT_PATH, mode='a+') as file:
+                        content = file.read()
+                        file.write("," + ",".join(filter(lambda x: x not in content, res)))
+                    self.__SPELL_CHECKER.word_frequency.load_text_file(self.__DICT_PATH)
+            return [] if not google_search_result else [google_search_result]
         return res
 
     def __check_spelling_in_google_search(self, word: str) -> str:
@@ -181,12 +188,13 @@ class DuplicateInSkuValidator(BaseValidator):
     _COLOR = 'brown'
     _NAME = 'Duplicate in MPSku column'
 
-    def __init__(self, duplicates_list: list) -> None:        
+    def __init__(self, duplicates_list: list) -> None:
         self.duplucates_list = [value.lower() for value in duplicates_list]
 
     def validate(self, value: str) -> Tuple[bool, str]:
         return (bool(re.match(r"[A-Za-z]{2}-.*", value)) and (value.lower() in self.duplucates_list),
-            f'Value has duplicates in Sku column')
+                f'Value has duplicates in Sku column')
+
 
 class UpperMPInSkuValidator(BaseValidator):
     _PRIORITY = 3
