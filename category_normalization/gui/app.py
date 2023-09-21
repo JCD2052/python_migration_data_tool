@@ -24,6 +24,7 @@ WRAP_LENGTH = 500
 ROW_STEP = 3
 DEFAULT_COLUMN = 1
 EXCEL_FILE_EXTENSION = '.xlsx'
+FILE_PREFIX = "TestResults"
 
 
 class CategoryNormalizationApp:
@@ -77,15 +78,8 @@ class CategoryNormalizationApp:
             sheet_name = pd.ExcelFile(self.__data_file_name).sheet_names[0]
             self.__status_label.info(f'first sheet: {sheet_name}')
             df = get_file_as_data_frame(self.__data_file_name, sheet_name)
-
-            def replaced_formulas():
-                with pd.ExcelWriter(self.__data_file_name, engine='openpyxl') as excel_writer:
-                    df.to_excel(excel_writer, sheet_name=sheet_name, index=False, engine='openpyxl')
-                self.__status_label.info(f'Replaced.')
-
-            formulas_replacing_thread = Thread(target=replaced_formulas, daemon=True)
             df = df.fillna('')
-            formulas_replacing_thread.start()
+
             level_categories_columns = list(filter(lambda x: str(x).lower().startswith('l'), df.columns))
             unique_table_values = list(
                 itertools.chain(*[list(filter(lambda x: bool(x), df[c].unique())) for c in level_categories_columns]))
@@ -161,14 +155,10 @@ class CategoryNormalizationApp:
                 criteries_colored.update({priority_name: validator.get_background_color()})
 
             styled = df.style.applymap(lambda x: errors.get(x, None))
-            while formulas_replacing_thread.is_alive():
-                self.__status_label.info(f'Replacing..')
-                self.__status_label.info(f'Replacing....')
-                self.__status_label.info(f'Replacing......')
-            formulas_replacing_thread.join()
-            with pd.ExcelWriter(self.__data_file_name, mode="a", engine='openpyxl',
-                                if_sheet_exists='replace') as writer:
+            new_file_path = Path(os.path.dirname(self.__data_file_name),f"{FILE_PREFIX}_{Path(self.__data_file_name).name}")
+            with pd.ExcelWriter(new_file_path, engine='openpyxl') as writer:
                 self.__status_label.info(f'Saving tabs.....')
+                df.to_excel(writer, sheet_name=sheet_name, index=False, engine='openpyxl')
                 styled.to_excel(writer, sheet_name="Validated", index=False, engine='openpyxl')
                 pd.DataFrame(errors_df).style.applymap(lambda x: errors.get(x, None)).to_excel(writer,
                                                                                                sheet_name="Errors",
