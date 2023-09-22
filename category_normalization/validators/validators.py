@@ -132,6 +132,7 @@ class SpellCheckValidator(BaseValidator):
     __A_TAG = 'a'
     __TAG_ID = 'fprsl'
     __L0CK = Lock()
+    __TOO_MANY_REQUESTS_STATUS_CODE = 429
 
     def validate(self, value: str) -> Tuple[bool, str]:
         errors = self.__check_for_errors_by_spellcheckers(value)
@@ -153,7 +154,7 @@ class SpellCheckValidator(BaseValidator):
                 res = res + misspells
         if res:
             google_search_result = self.__check_spelling_in_google_search(value)
-            if google_search_result:
+            if not google_search_result:
                 with self.__L0CK:
                     with open(self.__DICT_PATH, mode='a+') as file:
                         file.seek(0)
@@ -167,6 +168,8 @@ class SpellCheckValidator(BaseValidator):
     def __check_spelling_in_google_search(self, word: str) -> str:
         response = self.__GOOGLE_SEARCH_CLIENT.get_response(word)
         print(response.status_code)
+        if response.status_code == self.__TOO_MANY_REQUESTS_STATUS_CODE:
+            return "Status code 429 - Too many requests"
         soup = BeautifulSoup(response.text, "html.parser")
         parent_tag = soup.find(self.__A_TAG, id=self.__TAG_ID)
         return parent_tag.find_next().text if parent_tag is not None else EMPTY_STRING
