@@ -1,3 +1,5 @@
+import subprocess
+import sys
 import tkinter
 import traceback
 from concurrent.futures import ThreadPoolExecutor
@@ -128,10 +130,10 @@ class CategoryNormalizationApp:
                 unique_sku_values = df[sku_column_name].unique()
                 sku_duplicates = list(df[df[sku_column_name].duplicated() == True][sku_column_name].unique())
                 sku_validators = [UpperMPInSkuValidator(),
-                                DuplicateInSkuValidator(sku_duplicates),
-                                ExtraSpacesValidator(),
-                                NonBreakingSpaceValidator(),
-                                AlmostSameWordValidator(unique_sku_values)]
+                                  DuplicateInSkuValidator(sku_duplicates),
+                                  ExtraSpacesValidator(),
+                                  NonBreakingSpaceValidator(),
+                                  AlmostSameWordValidator(unique_sku_values)]
                 for value in filter(lambda x: str(x), unique_sku_values):
                     validator_message = []
                     results = []
@@ -155,7 +157,8 @@ class CategoryNormalizationApp:
                 criteries_colored.update({priority_name: validator.get_background_color()})
 
             styled = df.style.applymap(lambda x: errors.get(x, None))
-            new_file_path = Path(os.path.dirname(self.__data_file_name),f"{FILE_PREFIX}_{Path(self.__data_file_name).name}")
+            new_file_path = Path(os.path.dirname(self.__data_file_name),
+                                 f"{FILE_PREFIX}_{Path(self.__data_file_name).name}")
             with pd.ExcelWriter(new_file_path, engine='openpyxl') as writer:
                 self.__status_label.info(f'Saving tabs.....')
                 df.to_excel(writer, sheet_name=sheet_name, index=False, engine='openpyxl')
@@ -189,7 +192,8 @@ class CategoryNormalizationApp:
 
     # Get save directory
     def __open_file_folder(self):
-        return os.startfile(os.path.dirname(self.__data_file_name))
+        opener = "open" if sys.platform == "darwin" else "xdg-open"
+        return subprocess.call([opener, os.path.dirname(self.__data_file_name)])
 
     # Create label
     def __create_label_element(self, text) -> Label:
@@ -206,6 +210,4 @@ class CategoryNormalizationApp:
     # Open file with window dialog and save directory
     @staticmethod
     def __open_excel_file_via_dialog() -> str:
-        return filedialog.askopenfilename(title="Select a file",
-                                          filetypes=(("Excel files",
-                                                      "*.xls*"),))
+        return filedialog.askopenfilename(title="Select a file")

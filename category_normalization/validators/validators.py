@@ -126,7 +126,7 @@ class SpellCheckValidator(BaseValidator):
     _COLOR = 'orange'
     _NAME = 'Misspelled word'
     __SPELL_CHECKER = SpellChecker()
-    __DICT_PATH = os.path.join(os.path.dirname(__file__), '..\\..\\src\\words.txt')
+    __DICT_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..\\..\\src\\words.txt'))
     __SPELL_CHECKER.word_frequency.load_text_file(__DICT_PATH)
     __GOOGLE_SEARCH_CLIENT = GoogleSearchClient()
     __A_TAG = 'a'
