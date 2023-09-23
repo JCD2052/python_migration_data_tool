@@ -1,5 +1,6 @@
 import tkinter
 import traceback
+import subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Thread
@@ -189,7 +190,8 @@ class CategoryNormalizationApp:
 
     # Get save directory
     def __open_file_folder(self):
-        return os.startfile(os.path.dirname(self.__data_file_name))
+        opener = "open" if sys.platform == "darwin" else "xdg-open"
+        return subprocess.call([opener, os.path.dirname(self.__data_file_name)])
 
     # Create label
     def __create_label_element(self, text) -> Label:
@@ -206,6 +208,4 @@ class CategoryNormalizationApp:
     # Open file with window dialog and save directory
     @staticmethod
     def __open_excel_file_via_dialog() -> str:
-        return filedialog.askopenfilename(title="Select a file",
-                                          filetypes=(("Excel files",
-                                                      "*.xls*"),))
+        return filedialog.askopenfilename(title="Select a file")
