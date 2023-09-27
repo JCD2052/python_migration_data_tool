@@ -1,6 +1,9 @@
 import itertools
+import re
 from concurrent.futures import ThreadPoolExecutor, Future
 from typing import List, Dict, Set, Tuple, Iterable
+
+import multiprocessing
 
 import pandas as pd
 
@@ -60,26 +63,44 @@ class DataManipulation:
         return res
 
     def find_categories_with_wrong_hierarchy(self) -> Dict[str, str]:
-        res: Dict[str, str] = dict()
-        for row in self.__data_frame.iterrows():
-            filtered_row: List[str] = [v for v in list(row[1].values) if bool(v)]
-            value: str = filtered_row[-1]
-            value_column: str = self.category_columns[filtered_row.index(value)]
-            duplicated_values: pd.DataFrame = self.__data_frame.loc[self.__data_frame[value_column] == value]
-            if not len(duplicated_values) <= 1:
-                values: Set[Tuple[str]] = set([tuple(v[0:filtered_row.index(value)]) for v in duplicated_values.values])
-                if len(values) > 1:
-                    res.update({value: f"wrong category hierarchies for value {value}: "
-                                       f"{' and '.join(list(map(lambda x: '(' + '-->'.join(x) + ')', values)))}"})
+        num_processes = multiprocessing.cpu_count()
+        chunk_size = int(self.__data_frame.shape[0] / num_processes)
+        chunks = [self.__data_frame.iloc[self.__data_frame.index[i:i + chunk_size]] for i in
+                  range(0, self.__data_frame.shape[0], chunk_size)]
+        pool = multiprocessing.Pool(processes=num_processes)
 
-                else:
-                    res.update({value: f'category {value} in column {value_column} is completely duplicated.'})
-        return res
+        data = pool.map(self.check_frame_chunk, chunks)
+        return {k: v for d in data for k, v in d.items()}
+
+    def check_frame_chunk(self, chunk_frame: pd.DataFrame) -> Dict[str, str]:
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            futures: List[Future] = [executor.submit(self.check_row, row) for row
+                                     in
+                                     chunk_frame.iterrows()]
+            return {k: v for call in futures for k, v in call.result().items()}
+
+    def check_row(self, row) -> Dict[str, str]:
+        print(row)
+        filtered_row: List[str] = [v for v in list(row[1][self.category_columns].values) if bool(v)]
+        value: str = filtered_row[-1]
+        value_column: str = self.category_columns[filtered_row.index(value)]
+        duplicated_values: pd.DataFrame = self.__data_frame.loc[self.__data_frame[value_column] == value][
+            self.category_columns]
+        if not len(duplicated_values) <= 1:
+            values: Set[Tuple[str]] = set([tuple(v[0:filtered_row.index(value)]) for v in duplicated_values.values])
+            if len(values) > 1:
+                return {value: f"wrong category hierarchies for value {value}: "
+                               f"{' and '.join(list(map(lambda x: '(' + '-->'.join(x) + ')', values)))}"}
+            else:
+                return {value: f'category {value} in column {value_column} is completely duplicated.'}
+        else:
+            return {}
 
     def __validate_value(self, value: str, column: str, columns_range: List[str]) -> str:
         res: pd.Series = self.__data_frame.loc[self.__data_frame[column] == value][columns_range]
-        first_value = res.values[0]
-        results: bool = all([all(list(row == first_value)) for row in res.values])
+        norm_func = lambda data_array: [re.sub('[^A-Za-z0-9]+', '', i.replace('&', 'and').lower()) for i in data_array]
+        first_value = norm_func(res.values[0])
+        results: bool = all([norm_func(row) == first_value for row in res.values])
         if not results:
             return value
         else:

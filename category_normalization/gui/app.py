@@ -88,7 +88,7 @@ class CategoryNormalizationApp:
                           SpecialCharactersValidator(),
                           ExtraSpacesValidator(),
                           NonBreakingSpaceValidator(),
-                          # SpellCheckValidator(),
+                          SpellCheckValidator(),
                           AlmostSameWordValidator(data_obj.get_unique_values_from_table()),
                           DuplicatesInColumnValidator(data_obj.get_column_almost_same_values()),
                           DuplicateWithWrongHierarchyValidator(data_obj.find_categories_with_wrong_hierarchy()),
