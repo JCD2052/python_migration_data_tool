@@ -216,7 +216,7 @@ class UpperMPInSkuValidator(BaseValidator):
 
 class DuplicateWithWrongHierarchyValidator(BaseValidator):
     _PRIORITY = 9
-    _COLOR = 'lightgrey'
+    _COLOR = 'coral'
     _NAME = 'Duplicates with wrong hierarchy'
 
     def __init__(self, data_dict: Dict[str, str]) -> None:
@@ -229,7 +229,7 @@ class DuplicateWithWrongHierarchyValidator(BaseValidator):
 
 class CheckCategoryHierarchyValidator(BaseValidator):
     _PRIORITY = 10
-    _COLOR = 'lightred'
+    _COLOR = 'aqua'
     _NAME = 'Category Hierarchy Errors'
 
     def __init__(self, values: List[str]) -> None:

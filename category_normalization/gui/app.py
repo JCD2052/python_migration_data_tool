@@ -141,10 +141,10 @@ class CategoryNormalizationApp:
 
             criteries_colored = dict()
             criteria_names = []
-            for validator in enumerate(sorted(validators, key=lambda x: x.get_priority())):
-                priority_name = f"Priority {validator[0] + 1}. {validator[1].get_name()}"
+            for count, validator in enumerate(sorted(validators, key=lambda x: x.get_priority())):
+                priority_name = f"Priority {count + 1}. {validator.get_name()}"
                 criteria_names.append({"Normalization critera": priority_name})
-                criteries_colored.update({priority_name: validator[1].get_background_color()})
+                criteries_colored.update({priority_name: validator.get_background_color()})
 
             styled = df.style.applymap(lambda x: errors.get(x, None))
             new_file_path = Path(os.path.dirname(self.__data_file_name),
@@ -183,15 +183,14 @@ class CategoryNormalizationApp:
     # Get save directory
     def __open_file_folder(self):
         file_folder = os.path.dirname(self.__data_file_name)
-        match sys.platform:
-            case 'win32':
-                    return subprocess.check_call(['explorer', os.path.normpath(file_folder)])
-            case 'linux2':
-                    return subprocess.check_call(['xdg-open', '--', file_folder])
-            case 'darwin':
-                    return subprocess.check_call(['open', '--',  file_folder])
-            case _:
-                raise Exception("Unsupported platform")
+        if sys.platform == 'win32':
+            return subprocess.check_call(['explorer', os.path.normpath(file_folder)])
+        elif sys.platform == 'linux2':
+            return subprocess.check_call(['xdg-open', '--', file_folder])
+        elif sys.platform == 'darwin':
+            return subprocess.check_call(['open', '--', file_folder])
+        else:
+            raise Exception("Unsupported platform")
 
     # Create label
     def __create_label_element(self, text) -> Label:
