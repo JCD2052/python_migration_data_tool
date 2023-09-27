@@ -116,6 +116,7 @@ class CategoryNormalizationApp:
                     [call.result() for call in futures]
 
             if sku_column_name in df.columns:
+                validators.extend([DuplicateInSkuValidator(list()), UpperMPInSkuValidator()])
                 self.__status_label.info(f'Checking skus column for duplicates...')
                 unique_sku_values = df[sku_column_name].unique()
                 sku_duplicates = list(df[df[sku_column_name].duplicated() == True][sku_column_name].unique())
@@ -140,11 +141,10 @@ class CategoryNormalizationApp:
 
             criteries_colored = dict()
             criteria_names = []
-            validators.extend([DuplicateInSkuValidator(list()), UpperMPInSkuValidator()])
-            for validator in sorted(validators, key=lambda x: x.get_priority()):
-                priority_name = f"Priority {validator.get_priority()}. {validator.get_name()}"
-                criteria_names.append({"Normalization criteries": priority_name})
-                criteries_colored.update({priority_name: validator.get_background_color()})
+            for validator in enumerate(sorted(validators, key=lambda x: x.get_priority())):
+                priority_name = f"Priority {validator[0] + 1}. {validator[1].get_name()}"
+                criteria_names.append({"Normalization critera": priority_name})
+                criteries_colored.update({priority_name: validator[1].get_background_color()})
 
             styled = df.style.applymap(lambda x: errors.get(x, None))
             new_file_path = Path(os.path.dirname(self.__data_file_name),
@@ -158,7 +158,7 @@ class CategoryNormalizationApp:
                                                                                                index=False,
                                                                                                engine='openpyxl')
                 pd.DataFrame(criteria_names).style.applymap(lambda x: criteries_colored.get(x, None)).to_excel(writer,
-                                                                                                               sheet_name="Criteries",
+                                                                                                               sheet_name="Criteria",
                                                                                                                index=False,
                                                                                                                engine='openpyxl')
             self.__status_label.info('Results have been saved.')
@@ -182,8 +182,16 @@ class CategoryNormalizationApp:
 
     # Get save directory
     def __open_file_folder(self):
-        opener = "open" if sys.platform == "darwin" else "xdg-open"
-        return subprocess.call([opener, os.path.abspath(os.path.dirname(self.__data_file_name))])
+        file_folder = os.path.dirname(self.__data_file_name)
+        match sys.platform:
+            case 'win32':
+                    return subprocess.check_call(['explorer', os.path.normpath(file_folder)])
+            case 'linux2':
+                    return subprocess.check_call(['xdg-open', '--', file_folder])
+            case 'darwin':
+                    return subprocess.check_call(['open', '--',  file_folder])
+            case _:
+                raise Exception("Unsupported platform")
 
     # Create label
     def __create_label_element(self, text) -> Label:
