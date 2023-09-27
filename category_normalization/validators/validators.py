@@ -53,16 +53,16 @@ class BaseValidator(abc.ABC):
 
 
 class LowerAndValidator(BaseValidator):
-    _PRIORITY = 7
+    _PRIORITY = 9
     _COLOR = 'green'
     _NAME = 'Lower \'and\''
 
     def validate(self, value: str) -> Tuple[bool, str]:
-        return ' and ' in value, 'Value contains \'and\' inside '
+        return ' and ' in value, 'The value contains \'and\''
 
 
 class SpecialCharactersValidator(BaseValidator):
-    _PRIORITY = 9
+    _PRIORITY = 11
     _COLOR = 'lightgrey'
     _NAME = 'Special character'
 
@@ -71,32 +71,32 @@ class SpecialCharactersValidator(BaseValidator):
         spec_characters = ", ".join(
             [f'"{char}"' for char in set(re.sub("[a-zA-Z0-9]", "", replaced_value))])
         return (not replaced_value.isalnum(),
-                f'Value contains special character inside: '
+                f'The value contains special character inside: '
                 f'{spec_characters}')
 
 
 class ExtraSpacesValidator(BaseValidator):
-    _PRIORITY = 5
+    _PRIORITY = 7
     _COLOR = 'lightgreen'
     _NAME = 'Extra space'
 
     def validate(self, value: str) -> Tuple[bool, str]:
         return (value.startswith(SPACE_STRING) or value.endswith(
             SPACE_STRING) or f'{SPACE_STRING}{SPACE_STRING}' in value,
-                f'Value contains spaces in start or end')
+                f'The value contains an extra space')
 
 
 class NonBreakingSpaceValidator(BaseValidator):
-    _PRIORITY = 4
+    _PRIORITY = 6
     _COLOR = 'lightblue'
     _NAME = 'Non-breaking space'
 
     def validate(self, value: str) -> Tuple[bool, str]:
-        return u"\u00A0" in value, f'Value has non-breaking space inside.'
+        return u"\u00A0" in value, f'The value contains a non-breaking space'
 
 
 class AlmostSameWordValidator(BaseValidator):
-    _PRIORITY = 6
+    _PRIORITY = 8
     _COLOR = 'yellow'
     _NAME = 'Almost same category name'
 
@@ -106,7 +106,7 @@ class AlmostSameWordValidator(BaseValidator):
 
     def validate(self, value: str) -> Tuple[bool, str]:
         return (value in self.__duplicate_values,
-                f'Value has almost same category name: '
+                f'The value has almost same category name: '
                 f'({"), (".join(self.__duplicate_dict.get(self.__normalize_category(value)))})')
 
     @staticmethod
@@ -122,7 +122,7 @@ class AlmostSameWordValidator(BaseValidator):
 
 
 class SpellCheckValidator(BaseValidator):
-    _PRIORITY = 8
+    _PRIORITY = 10
     _COLOR = 'orange'
     _NAME = 'Misspelled word'
     __SPELL_CHECKER = SpellChecker()
@@ -136,7 +136,7 @@ class SpellCheckValidator(BaseValidator):
 
     def validate(self, value: str) -> Tuple[bool, str]:
         errors = self.__check_for_errors_by_spellcheckers(value)
-        return bool(errors), f'Value has next spellchecks errors: {", ".join(errors)}'
+        return bool(errors), f'The value includes the following misspellings: {", ".join(errors)}'
 
     def __check_for_errors_by_spellcheckers(self, value: str) -> List[str]:
         if not value:
@@ -186,7 +186,7 @@ class DuplicatesInColumnValidator(BaseValidator):
     def validate(self, value: str) -> Tuple[bool, str]:
         levels = self.__category_leveling.get(value)
         return (len(levels) > 1,
-                f'Value duplicated in the next columns {" , ".join(levels)}')
+                f'The value is duplicated in the following columns {" , ".join(levels)}')
 
 
 class DuplicateInSkuValidator(BaseValidator):
@@ -199,7 +199,7 @@ class DuplicateInSkuValidator(BaseValidator):
 
     def validate(self, value: str) -> Tuple[bool, str]:
         return (bool(re.match(r"[A-Za-z]{2}-.*", value)) and (value.lower() in self.duplicates_list),
-                f'Value has duplicates in Sku column')
+                f'The value is duplicated in the MPSku column')
 
 
 class UpperMPInSkuValidator(BaseValidator):
@@ -209,13 +209,13 @@ class UpperMPInSkuValidator(BaseValidator):
 
     def validate(self, value: str) -> Tuple[bool, str]:
         if value.lower().startswith("mp-"):
-            return not bool(re.match(r"mp-.*", value)), f'Value contains uppercase char'
+            return not bool(re.match(r"mp-.*", value)), f'The value contains uppercase char'
         else:
-            return False, f"Value  doesn't start with 'mp-'"
+            return False, f"The value doesn't start with 'mp-'"
 
 
 class DuplicateWithWrongHierarchyValidator(BaseValidator):
-    _PRIORITY = 9
+    _PRIORITY = 5
     _COLOR = 'coral'
     _NAME = 'Duplicates with wrong hierarchy'
 
@@ -228,7 +228,7 @@ class DuplicateWithWrongHierarchyValidator(BaseValidator):
 
 
 class CheckCategoryHierarchyValidator(BaseValidator):
-    _PRIORITY = 10
+    _PRIORITY = 4
     _COLOR = 'olive'
     _NAME = 'Category Hierarchy Errors'
 
@@ -236,4 +236,4 @@ class CheckCategoryHierarchyValidator(BaseValidator):
         self.__values = values
 
     def validate(self, value: str) -> Tuple[bool, str]:
-        return value in self.__values, f'Value {value} has wrong hierarchy'
+        return value in self.__values, f'The value {value} has the wrong hierarchy'
