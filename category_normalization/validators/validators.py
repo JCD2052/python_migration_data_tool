@@ -6,8 +6,6 @@ from typing import Set, Tuple, List, Dict
 
 from spellchecker import SpellChecker
 from textblob import Word
-from pathlib import Path
-
 
 from utils.string_utils import EMPTY_STRING
 from threading import Lock
@@ -197,10 +195,10 @@ class DuplicateInSkuValidator(BaseValidator):
     _NAME = 'Duplicate in MPSku column'
 
     def __init__(self, duplicates_list: list) -> None:
-        self.duplucates_list = [value.lower() for value in duplicates_list]
+        self.duplicates_list = [value.lower() for value in duplicates_list]
 
     def validate(self, value: str) -> Tuple[bool, str]:
-        return (bool(re.match(r"[A-Za-z]{2}-.*", value)) and (value.lower() in self.duplucates_list),
+        return (bool(re.match(r"[A-Za-z]{2}-.*", value)) and (value.lower() in self.duplicates_list),
                 f'Value has duplicates in Sku column')
 
 
@@ -213,4 +211,29 @@ class UpperMPInSkuValidator(BaseValidator):
         if value.lower().startswith("mp-"):
             return not bool(re.match(r"mp-.*", value)), f'Value contains uppercase char'
         else:
-            return False, f'Value  doesn\'t start with "mp-"'
+            return False, f"Value  doesn't start with 'mp-'"
+
+
+class DuplicateWithWrongHierarchyValidator(BaseValidator):
+    _PRIORITY = 9
+    _COLOR = 'lightgrey'
+    _NAME = 'Duplicates with wrong hierarchy'
+
+    def __init__(self, data_dict: Dict[str, str]) -> None:
+        self.__data_dict = data_dict
+
+    def validate(self, value: str) -> Tuple[bool, str]:
+        result = self.__data_dict.get(value)
+        return bool(result), result
+
+
+class CheckCategoryHierarchyValidator(BaseValidator):
+    _PRIORITY = 10
+    _COLOR = 'lightred'
+    _NAME = 'Category Hierarchy Errors'
+
+    def __init__(self, values: List[str]) -> None:
+        self.__values = values
+
+    def validate(self, value: str) -> Tuple[bool, str]:
+        return value in self.__values, f'Value {value} has wrong hierarchy'

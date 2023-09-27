@@ -1,5 +1,3 @@
-import subprocess
-import sys
 import tkinter
 import traceback
 import subprocess, sys
@@ -12,6 +10,7 @@ from utils.label_logger import LabelLogger
 from utils.excel_utils import *
 from utils.color_constants import *
 from category_normalization.validators.validators import *
+from category_normalization.data_manipulation.data_manipulation import DataManipulation
 
 SPACE_STRING = ' '
 sku_column_name = "MPSku"
@@ -82,30 +81,20 @@ class CategoryNormalizationApp:
             self.__status_label.info(f'first sheet: {sheet_name}')
             df = get_file_as_data_frame(self.__data_file_name, sheet_name)
             df = df.fillna('')
-
-            level_categories_columns = list(filter(lambda x: str(x).lower().startswith('l'), df.columns))
-            unique_table_values = list(
-                itertools.chain(*[list(filter(lambda x: bool(x), df[c].unique())) for c in level_categories_columns]))
-
-            column_values = dict()
-            for col in level_categories_columns:
-                for v in filter(lambda x: bool(x), df[col].unique()):
-                    if v not in column_values:
-                        column_values.update({v: [col]})
-                    else:
-                        column_values[v] = column_values[v] + [col]
-
+            data_obj = DataManipulation(df)
             errors = dict()
             errors_df = []
             validators = [LowerAndValidator(),
                           SpecialCharactersValidator(),
                           ExtraSpacesValidator(),
                           NonBreakingSpaceValidator(),
-                          SpellCheckValidator(),
-                          AlmostSameWordValidator(unique_table_values),
-                          DuplicatesInColumnValidator(column_values)]
+                          # SpellCheckValidator(),
+                          AlmostSameWordValidator(data_obj.get_unique_values_from_table()),
+                          DuplicatesInColumnValidator(data_obj.get_column_almost_same_values()),
+                          DuplicateWithWrongHierarchyValidator(data_obj.find_categories_with_wrong_hierarchy()),
+                          CheckCategoryHierarchyValidator(data_obj.find_duplicated_categories_with_wrong_leveling())]
 
-            for column in level_categories_columns:
+            for column in data_obj.category_columns:
                 def check_value(category_value):
                     self.__status_label.info(f'Checking {category_value} in column {column}')
                     failed_validators = []
@@ -194,7 +183,7 @@ class CategoryNormalizationApp:
     # Get save directory
     def __open_file_folder(self):
         opener = "open" if sys.platform == "darwin" else "xdg-open"
-        return subprocess.call([opener, os.path.dirname(self.__data_file_name)])
+        return subprocess.call([opener, os.path.abspath(os.path.dirname(self.__data_file_name))])
 
     # Create label
     def __create_label_element(self, text) -> Label:
