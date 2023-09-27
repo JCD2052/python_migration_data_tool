@@ -63,7 +63,7 @@ class LowerAndValidator(BaseValidator):
 
 class SpecialCharactersValidator(BaseValidator):
     _PRIORITY = 9
-    _COLOR = 'grey'
+    _COLOR = 'lightgrey'
     _NAME = 'Special character'
 
     def validate(self, value: str) -> Tuple[bool, str]:
@@ -229,7 +229,7 @@ class DuplicateWithWrongHierarchyValidator(BaseValidator):
 
 class CheckCategoryHierarchyValidator(BaseValidator):
     _PRIORITY = 10
-    _COLOR = 'aqua'
+    _COLOR = 'olive'
     _NAME = 'Category Hierarchy Errors'
 
     def __init__(self, values: List[str]) -> None:

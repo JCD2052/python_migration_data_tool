@@ -88,36 +88,19 @@ class CategoryNormalizationApp:
                           SpecialCharactersValidator(),
                           ExtraSpacesValidator(),
                           NonBreakingSpaceValidator(),
-                          # SpellCheckValidator(),
+                          SpellCheckValidator(),
                           AlmostSameWordValidator(data_obj.get_unique_values_from_table()),
                           DuplicatesInColumnValidator(data_obj.get_column_almost_same_values()),
-                          DuplicateWithWrongHierarchyValidator(data_obj.find_categories_with_wrong_hierarchy()),
                           CheckCategoryHierarchyValidator(data_obj.find_duplicated_categories_with_wrong_leveling())]
 
             for column in data_obj.category_columns:
-                def check_value(category_value):
-                    self.__status_label.info(f'Checking {category_value} in column {column}')
-                    failed_validators = []
-                    messages = []
-                    for val in validators:
-                        res = val.validate(category_value)
-                        if res[0]:
-                            failed_validators.append(val)
-                            messages.append(res[1])
-                    failed_validators.sort(key=lambda x: x.get_priority())
-                    if failed_validators:
-                        bg_color = failed_validators[0].get_background_color()
-                        errors_df.append({"Value": category_value, "Reason": ". ".join(messages)})
-                        errors.update({category_value: bg_color})
-
                 values = list(filter(lambda x: str(x), df[column].unique()))
                 with ThreadPoolExecutor(max_workers=8) as executor:
-                    futures = [executor.submit(check_value, v) for v in values]
+                    futures = [executor.submit(self.__check_value, v, validators, errors_df, errors, column) for v in values]
                     [call.result() for call in futures]
 
             if sku_column_name in df.columns:
                 validators.extend([DuplicateInSkuValidator(list()), UpperMPInSkuValidator()])
-                self.__status_label.info(f'Checking skus column for duplicates...')
                 unique_sku_values = df[sku_column_name].unique()
                 sku_duplicates = list(df[df[sku_column_name].duplicated() == True][sku_column_name].unique())
                 sku_validators = [UpperMPInSkuValidator(),
@@ -126,18 +109,15 @@ class CategoryNormalizationApp:
                                   NonBreakingSpaceValidator(),
                                   AlmostSameWordValidator(unique_sku_values)]
                 for value in filter(lambda x: str(x), unique_sku_values):
-                    validator_message = []
-                    results = []
-                    for sku_validator in sku_validators:
-                        result = sku_validator.validate(value)
-                        if result[0]:
-                            results.append(sku_validator)
-                            validator_message.append(result[1])
-                    results.sort(key=lambda x: x.get_priority())
-                    if results:
-                        color = results[0].get_background_color()
-                        errors_df.append({"Value": value, "Reason": ". ".join(validator_message)})
-                        errors.update({value: color})
+                    self.__check_value(value, sku_validators, errors_df, errors, sku_column_name)
+            else:
+                validators.append(DuplicateWithWrongHierarchyValidator(data_obj.find_categories_with_wrong_hierarchy()))
+                taxonomy_validators = [DuplicateWithWrongHierarchyValidator(data_obj.find_categories_with_wrong_hierarchy())]
+                for column in data_obj.category_columns:
+                    values = list(filter(lambda x: str(x), df[column].unique()))
+                    with ThreadPoolExecutor(max_workers=8) as executor:
+                        futures = [executor.submit(self.__check_value, v, taxonomy_validators, errors_df, errors, column) for v in values]
+                        [call.result() for call in futures]
 
             criteries_colored = dict()
             criteria_names = []
@@ -203,6 +183,22 @@ class CategoryNormalizationApp:
     # Get last used row
     def __get_rows_size(self) -> int:
         return self.__window.grid_size()[1]
+    
+    def __check_value(self, category_value: str, validators: list, errors_df: list,
+                       error_dict: dict, column: str):
+        self.__status_label.info(f'Checking {category_value} in column {column}')
+        failed_validators = []
+        messages = []
+        for val in validators:
+            res = val.validate(category_value)
+            if res[0]:
+                failed_validators.append(val)
+                messages.append(res[1])
+        failed_validators.sort(key=lambda x: x.get_priority())
+        if failed_validators:
+            bg_color = failed_validators[0].get_background_color()
+            errors_df.append({"Value": category_value, "Reason": ". ".join(messages)})
+            error_dict.update({category_value: bg_color})
 
     # Open file with window dialog and save directory
     @staticmethod
