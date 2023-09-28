@@ -14,7 +14,7 @@ from category_normalization.validators.check_category_validator import CheckCate
 from category_normalization.validators.duplicate_in_column_validator import DuplicatesInColumnValidator
 from category_normalization.validators.duplicate_sku_validator import DuplicateInSkuValidator
 from category_normalization.validators.spell_check_validator import SpellCheckValidator
-from category_normalization.validators.wrong_hierarchy_validator import DuplicateWithWrongHierarchyValidator
+from category_normalization.validators.wrong_hierarchy_validator import DuplicateInTheLastCategoryValidator
 from utils.label_logger import LabelLogger
 
 SKU_COLUMN_NAME = "MPSku"
@@ -100,7 +100,7 @@ class TaxonomyFileValidationStrategy(BaseFileValidationStrategy):
                 AlmostSameWordValidator(self._data_frame),
                 DuplicatesInColumnValidator(self._data_frame),
                 CheckCategoryHierarchyValidator(self._data_frame),
-                DuplicateWithWrongHierarchyValidator(self._data_frame)]
+                DuplicateInTheLastCategoryValidator(self._data_frame)]
 
 
 class SkuMappingFileValidationStrategy(TaxonomyFileValidationStrategy):

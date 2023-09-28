@@ -9,7 +9,7 @@ from utils.string_utils import EMPTY_STRING
 
 
 class CheckCategoryHierarchyValidator(BaseValidator):
-    _PRIORITY = 4
+    _PRIORITY = 5
     _COLOR = 'olive'
     _NAME = 'Category Hierarchy Errors'
 

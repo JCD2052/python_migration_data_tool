@@ -9,10 +9,10 @@ from pandas import DataFrame
 from category_normalization.validators.base_validator import BaseValidator
 
 
-class DuplicateWithWrongHierarchyValidator(BaseValidator):
-    _PRIORITY = 5
+class DuplicateInTheLastCategoryValidator(BaseValidator):
+    _PRIORITY = 4
     _COLOR = 'coral'
-    _NAME = 'Duplicates with wrong hierarchy'
+    _NAME = 'Duplicate in the last category'
 
     def __init__(self, data: DataFrame = DataFrame()) -> None:
         self.__data: DataFrame = data
@@ -47,9 +47,9 @@ class DuplicateWithWrongHierarchyValidator(BaseValidator):
         if not len(duplicated_values) <= 1:
             values: Set[Tuple[str]] = set([tuple(v[0:filtered_row.index(value)]) for v in duplicated_values.values])
             if len(values) > 1:
-                return {value: f"wrong category hierarchies for value {value}: "
+                return {value: f"Incorrect category hierarchies for value {value}: "
                                f"{' and '.join(list(map(lambda x: '(' + '-->'.join(x) + ')', values)))}"}
             else:
-                return {value: f'category {value} in column {value_column} is completely duplicated.'}
+                return {value: f'The category {value} in column {value_column} is completely duplicated.'}
         else:
             return {}
