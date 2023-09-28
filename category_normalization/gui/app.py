@@ -1,19 +1,18 @@
+import os
+import subprocess
+import sys
 import tkinter
 import traceback
-import subprocess, sys
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Thread
 from tkinter import Tk, Button, Label, filedialog
 
-from utils.label_logger import LabelLogger
-from utils.excel_utils import *
+from category_normalization.data_manipulation.file_validation_strategy import BaseFileValidationStrategy
+from category_normalization.data_manipulation.strategy_factory import StrategyFactory
 from utils.color_constants import *
-from category_normalization.validators.validators import *
-from category_normalization.data_manipulation.data_manipulation import DataManipulation
-
-SPACE_STRING = ' '
-sku_column_name = "MPSku"
+from utils.excel_utils import *
+from utils.label_logger import LabelLogger
+from utils.string_utils import EMPTY_STRING
 
 APP_TITLE = 'Category Validation Tool'
 WINDOW_GEOMETRY = '600x300'
@@ -76,71 +75,30 @@ class CategoryNormalizationApp:
     # Main logic when user press submit
     def __submit(self) -> None:
         try:
-            self.__status_label.info(f'Normalization of table {Path(self.__data_file_name).name}...')
-            sheet_name = pd.ExcelFile(self.__data_file_name).sheet_names[0]
-            self.__status_label.info(f'first sheet: {sheet_name}')
-            df = get_file_as_data_frame(self.__data_file_name, sheet_name)
-            df = df.fillna('')
-            data_obj = DataManipulation(df)
-            errors = dict()
-            errors_df = []
-            validators = [LowerAndValidator(),
-                          SpecialCharactersValidator(),
-                          ExtraSpacesValidator(),
-                          NonBreakingSpaceValidator(),
-                          SpellCheckValidator(),
-                          AlmostSameWordValidator(data_obj.get_unique_values_from_table()),
-                          DuplicatesInColumnValidator(data_obj.get_column_almost_same_values()),
-                          CheckCategoryHierarchyValidator(data_obj.find_duplicated_categories_with_wrong_leveling())]
-
-            for column in data_obj.category_columns:
-                values = list(filter(lambda x: str(x), df[column].unique()))
-                with ThreadPoolExecutor(max_workers=8) as executor:
-                    futures = [executor.submit(self.__check_value, v, validators, errors_df, errors, column) for v in values]
-                    [call.result() for call in futures]
-
-            if sku_column_name in df.columns:
-                validators.extend([DuplicateInSkuValidator(list()), UpperMPInSkuValidator()])
-                unique_sku_values = df[sku_column_name].unique()
-                sku_duplicates = list(df[df[sku_column_name].duplicated() == True][sku_column_name].unique())
-                sku_validators = [UpperMPInSkuValidator(),
-                                  DuplicateInSkuValidator(sku_duplicates),
-                                  ExtraSpacesValidator(),
-                                  NonBreakingSpaceValidator(),
-                                  AlmostSameWordValidator(unique_sku_values)]
-                for value in filter(lambda x: str(x), unique_sku_values):
-                    self.__check_value(value, sku_validators, errors_df, errors, sku_column_name)
-            else:
-                validators.append(DuplicateWithWrongHierarchyValidator(data_obj.find_categories_with_wrong_hierarchy()))
-                taxonomy_validators = [DuplicateWithWrongHierarchyValidator(data_obj.find_categories_with_wrong_hierarchy())]
-                for column in data_obj.category_columns:
-                    values = list(filter(lambda x: str(x), df[column].unique()))
-                    with ThreadPoolExecutor(max_workers=8) as executor:
-                        futures = [executor.submit(self.__check_value, v, taxonomy_validators, errors_df, errors, column) for v in values]
-                        [call.result() for call in futures]
-
-            criteries_colored = dict()
-            criteria_names = []
-            for count, validator in enumerate(sorted(validators, key=lambda x: x.get_priority())):
-                priority_name = f"Priority {count + 1}. {validator.get_name()}"
-                criteria_names.append({"Normalization critera": priority_name})
-                criteries_colored.update({priority_name: validator.get_background_color()})
-
-            styled = df.style.applymap(lambda x: errors.get(x, None))
-            new_file_path = Path(os.path.dirname(self.__data_file_name),
-                                 f"{FILE_PREFIX}_{Path(self.__data_file_name).name}")
+            self.__status_label.info(f'Started validation of the table {Path(self.__data_file_name).name}...')
+            data_frame = get_file_as_data_frame(self.__data_file_name)
+            data_frame = data_frame.fillna('')
+            self.__status_label.info('Read file...')
+            validation_strategy: BaseFileValidationStrategy = StrategyFactory.get_strategy(data_frame,
+                                                                                           self.__status_label)
+            self.__status_label.info('Selected validation strategy...')
+            validation_strategy.process()
+            self.__status_label.info('Processed...')
+            errors_data = validation_strategy.get_errors_frame()
+            self.__status_label.info('Collected errors...')
+            validated_data = validation_strategy.get_validated_frame()
+            self.__status_label.info('Validated table...')
+            legend_data = validation_strategy.get_legend_frame()
+            self.__status_label.info('Created legend sheet...')
+            new_file_path = self.__create_path_for_new_file()
             with pd.ExcelWriter(new_file_path, engine='openpyxl') as writer:
                 self.__status_label.info(f'Saving tabs.....')
-                df.to_excel(writer, sheet_name=sheet_name, index=False, engine='openpyxl')
-                styled.to_excel(writer, sheet_name="Validated", index=False, engine='openpyxl')
-                pd.DataFrame(errors_df).style.applymap(lambda x: errors.get(x, None)).to_excel(writer,
-                                                                                               sheet_name="Errors",
-                                                                                               index=False,
-                                                                                               engine='openpyxl')
-                pd.DataFrame(criteria_names).style.applymap(lambda x: criteries_colored.get(x, None)).to_excel(writer,
-                                                                                                               sheet_name="Criteria",
-                                                                                                               index=False,
-                                                                                                               engine='openpyxl')
+                validated_data.to_excel(writer,
+                                        sheet_name="Validated", index=False, engine='openpyxl')
+                errors_data.to_excel(writer,
+                                     sheet_name="Errors", index=False, engine='openpyxl')
+                legend_data.to_excel(writer,
+                                     sheet_name="Criteria", index=False, engine='openpyxl')
             self.__status_label.info('Results have been saved.')
             self.__show_open_file_folder_button()
         except Exception:
@@ -159,6 +117,10 @@ class CategoryNormalizationApp:
                                                 text="Open file folder")
         self.__open_file_folder_button.grid(column=DEFAULT_COLUMN, row=self.__last_position_in_grid)
         self.__open_file_folder_button.configure(command=self.__open_file_folder)
+
+    def __create_path_for_new_file(self):
+        return Path(os.path.dirname(self.__data_file_name),
+                    f"{FILE_PREFIX}_{Path(self.__data_file_name).name}")
 
     # Get save directory
     def __open_file_folder(self):
@@ -183,22 +145,6 @@ class CategoryNormalizationApp:
     # Get last used row
     def __get_rows_size(self) -> int:
         return self.__window.grid_size()[1]
-    
-    def __check_value(self, category_value: str, validators: list, errors_df: list,
-                       error_dict: dict, column: str):
-        self.__status_label.info(f'Checking {category_value} in column {column}')
-        failed_validators = []
-        messages = []
-        for val in validators:
-            res = val.validate(category_value)
-            if res[0]:
-                failed_validators.append(val)
-                messages.append(res[1])
-        failed_validators.sort(key=lambda x: x.get_priority())
-        if failed_validators:
-            bg_color = failed_validators[0].get_background_color()
-            errors_df.append({"Value": category_value, "Reason": ". ".join(messages)})
-            error_dict.update({category_value: bg_color})
 
     # Open file with window dialog and save directory
     @staticmethod
