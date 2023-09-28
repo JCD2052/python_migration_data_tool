@@ -8,7 +8,7 @@ from textblob import Word
 
 from category_normalization.validators.base_validator import BaseValidator
 from category_normalization.validators.google_search_client import GoogleSearchClient
-from utils.string_utils import EMPTY_STRING
+from utils.string_utils import EMPTY_STRING, ALPHABET_STRING
 
 
 class SpellCheckValidator(BaseValidator):
@@ -34,6 +34,10 @@ class SpellCheckValidator(BaseValidator):
         res = []
         words = list(filter(lambda x: x.isupper() is False and x.isalpha(), self.__SPELL_CHECKER.split_words(value)))
         for word in words:
+            for letter in word:
+                    if letter.lower() not in ALPHABET_STRING:
+                        res.append(word)
+                        return res
             misspells = list(self.__SPELL_CHECKER.unknown([word]))
             if not misspells:
                 res = res + misspells
