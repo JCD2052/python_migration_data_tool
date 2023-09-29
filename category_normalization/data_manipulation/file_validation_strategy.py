@@ -43,13 +43,16 @@ class BaseFileValidationStrategy(ABC):
 
     def get_legend_frame(self) -> Styler:
         sorted_dict = dict()
+        description_dict = dict()
         values = list(self._legend_frame.values())
         sorted_value_index = sorted(values, key=lambda t: t[1])
         for count, val in enumerate(sorted_value_index):
             for k, v in self._legend_frame.items():
                 if val == v:
-                    sorted_dict.update({f"Priority {int(count) + 1}: {k}": v[0]})
-        values = [{"Validation criteria": cell[0]} for cell in sorted_dict.items()]
+                    key_string = f"Priority {int(count) + 1}: {k}"
+                    sorted_dict.update({key_string: v[0]})
+                    description_dict.update({key_string: v[2]})
+        values = [{"Validation criteria": cell[0], "Description": description_dict[cell[0]]} for cell in sorted_dict.items()]
         return DataFrame(values).style.applymap(lambda cell: sorted_dict.get(cell, None))
 
     @abstractmethod
@@ -79,7 +82,7 @@ class BaseFileValidationStrategy(ABC):
 
     def _collect_legend_info(self, validators: List[BaseValidator]) -> None:
         for validator in sorted(validators, key=lambda x: x.get_priority()):
-            validator_data = {validator.get_name(): (validator.get_background_color(), validator.get_priority())}
+            validator_data = {validator.get_name(): (validator.get_background_color(), validator.get_priority(), validator.get_description())}
             self._legend_frame.update(validator_data)
 
 

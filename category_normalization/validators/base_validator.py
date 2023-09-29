@@ -4,12 +4,13 @@ from abc import ABC, abstractmethod
 from typing import Tuple, Set
 
 from utils.string_utils import SPACE_STRING
-
+from utils.file_utils import get_validation_criteria_description
 
 class BaseValidator(ABC):
     _PRIORITY = int()
     _COLOR = ''
     _NAME = ''
+    _DESCRIPTION_DICT = get_validation_criteria_description()
 
     @abstractmethod
     def validate(self, value: str) -> Tuple[bool, str]:
@@ -22,6 +23,10 @@ class BaseValidator(ABC):
     @classmethod
     def get_name(cls) -> str:
         return cls._NAME
+    
+    @classmethod
+    def get_description(cls) -> str:
+        return cls._DESCRIPTION_DICT[cls._NAME]
 
     @classmethod
     def get_background_color(cls) -> str:
@@ -50,7 +55,7 @@ class BaseValidator(ABC):
 class LowerAndValidator(BaseValidator):
     _PRIORITY = 9
     _COLOR = 'green'
-    _NAME = 'Lower \'and\''
+    _NAME = "Lower 'and'"
 
     def validate(self, value: str) -> Tuple[bool, str]:
         return ' and ' in value, 'The value contains \'and\''
@@ -93,7 +98,7 @@ class NonBreakingSpaceValidator(BaseValidator):
 class UpperMPInSkuValidator(BaseValidator):
     _PRIORITY = 3
     _COLOR = 'pink'
-    _NAME = 'Upper \'MP-\' in MPSku column'
+    _NAME = "Upper 'MP-' in MPSku column"
 
     def validate(self, value: str) -> Tuple[bool, str]:
         if value.lower().startswith("mp-"):
