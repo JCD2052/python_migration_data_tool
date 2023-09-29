@@ -1,7 +1,6 @@
 import multiprocessing
 from asyncio import Future
 from concurrent.futures import ThreadPoolExecutor
-from multiprocessing.pool import ThreadPool
 from typing import Tuple, Dict, List, Set
 
 from pandas import DataFrame
@@ -27,8 +26,8 @@ class DuplicateInTheLastCategoryValidator(BaseValidator):
         chunk_size: int = int(self.__data.shape[0] / num_processes)
         chunks: List[DataFrame] = [self.__data.iloc[self.__data.index[i:i + chunk_size]] for i in
                                    range(0, self.__data.shape[0], chunk_size)]
-        with ThreadPool(num_processes) as pool:
-            data: List[Dict[str, str]] = pool.map(self.__check_frame_chunk, chunks)
+        with ThreadPoolExecutor(num_processes) as pool:
+            data = pool.map(self.__check_frame_chunk, chunks)
             return {k: v for d in data for k, v in d.items()}
 
     def __check_frame_chunk(self, chunk_frame: DataFrame) -> Dict[str, str]:
