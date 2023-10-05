@@ -1,4 +1,4 @@
-{
+description = {
     "Duplicate in MPSku column": "If at least two duplicates are found in the MPSku column (only for a non-referral products)",
     "Duplicate in category value": "If at least two duplicates are found in different categories, for example, duplicates in categories L2 and L3",
     "Upper 'MP-' in MPSku column": "If an SKU value that starts with 'mp-' and has an uppercase letter is found",

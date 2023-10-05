@@ -4,13 +4,14 @@ from abc import ABC, abstractmethod
 from typing import Tuple, Set
 
 from utils.string_utils import SPACE_STRING
-from utils.file_utils import get_validation_criteria_description
+from category_normalization.data_manipulation.description import description
+
 
 class BaseValidator(ABC):
     _PRIORITY = int()
     _COLOR = ''
     _NAME = ''
-    _DESCRIPTION_DICT = get_validation_criteria_description()
+    _DESCRIPTION_DICT = description
 
     @abstractmethod
     def validate(self, value: str) -> Tuple[bool, str]:
@@ -23,7 +24,7 @@ class BaseValidator(ABC):
     @classmethod
     def get_name(cls) -> str:
         return cls._NAME
-    
+
     @classmethod
     def get_description(cls) -> str:
         return cls._DESCRIPTION_DICT[cls._NAME]
