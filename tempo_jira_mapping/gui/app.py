@@ -75,14 +75,14 @@ class TempoToJiraApp:
 
     def __submit(self) -> None:
         try:
-            template_columns = set(get_file_as_data_frame(self.__get_template_file_path()).columns)
+            template_columns = get_file_as_data_frame(self.__get_template_file_path()).columns
             data_frame = get_file_as_data_frame(self.__data_file_name)
             self.__status_label.info('Read file...')
             data_frame = TempoToJira(data_frame, *self.__create_mappers()).process()
-            for column in template_columns.difference(set(data_frame.columns)):
+            for column in set(template_columns).difference(set(data_frame.columns)):
                 data_frame[column] = {}
             data_frame = data_frame.fillna(EMPTY_STRING)
-            data_frame.columns = template_columns
+            data_frame = data_frame[template_columns]
             new_file_path = self.__create_path_for_new_file()
             with pd.ExcelWriter(new_file_path, engine='openpyxl') as writer:
                 data_frame = data_frame.style.applymap(
