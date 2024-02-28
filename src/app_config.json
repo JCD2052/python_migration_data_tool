@@ -1,0 +1,9 @@
+{
+  "template_filepath": "src/wl-import-template-file.xlsx",
+  "mapping_sheets": {
+    "name_mapping": "Names",
+    "category_mapping": "Tasks",
+    "tasks_mapping": "Tasks"
+  },
+  "work_logs_sheet_name": "WL"
+}

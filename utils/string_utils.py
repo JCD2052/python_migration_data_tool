@@ -2,7 +2,9 @@ import re
 from datetime import datetime
 from typing import List
 
-EMPTY_STRING = ''
+EMPTY_STRING: str = ''
+SPACE_STRING: str = ' '
+ALPHABET_STRING = 'abcdefghijklmnopqrstuvwxyz'
 
 
 # Look in target_data list if origin value in lower case or without spec character matches with selected.
