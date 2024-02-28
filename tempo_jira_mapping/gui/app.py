@@ -145,7 +145,7 @@ class TempoToJiraApp:
 
     @staticmethod
     def __get_template_file_path() -> str:
-        return TempoToJiraApp.__get_app_config()['template_filepath']
+        return get_file_path_from_sources(TempoToJiraApp.__get_app_config()['template_filepath'])
 
     @staticmethod
     def __get_app_config() -> dict:

@@ -1,5 +1,5 @@
 {
-  "template_filepath": "src/wl-import-template-file.xlsx",
+  "template_filepath": "wl-import-template-file.xlsx",
   "mapping_sheets": {
     "name_mapping": "Names",
     "category_mapping": "Tasks",
